@@ -159,12 +159,21 @@ function patchAvailability(activity, module, file, patchData, row, field='availa
             dateNF: 'YYYY-MM-DD hh:mm:ss'
         });
         const data = XLSX.utils.sheet_to_json(workbook.Sheets['moodle-data']);
-        data.forEach((row) => {
-            if (['completionexpected', 'availableFrom', 'availableTo', 'allowsubmissionsfromdate', 'duedate', 'cutoffdate'].some(e => !(row[e] instanceof Date || row[e] === undefined))) {
-                console.error(`invalid date in row ${i}`);
-                console.error(row);
-                process.exit(1);
-            }
+        data.forEach((row, i) => {
+            ['completionexpected', 'availableFrom', 'availableTo', 'allowsubmissionsfromdate', 'duedate', 'cutoffdate'].forEach((e, i) => {
+                if (!(row[e] instanceof Date || row[e] === undefined)) {
+                    // try to parse string as date as a fallback
+                    const d = new Date(row[e]);
+                    if (isNaN(d)) {
+                        // failed to parse, exit
+                        console.error(`invalid date in row ${i}`);
+                        console.error(row);
+                        process.exit(1);
+                    } else {
+                        row[e] = d;
+                    }
+                }
+            });
             patchData.set(row.id, row);
         });
     }
