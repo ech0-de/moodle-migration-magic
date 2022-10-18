@@ -1,0 +1,30 @@
+{
+  "name": "moodle-migration-magic",
+  "version": "1.0.0",
+  "description": "A tool that allows patching a Moodle backup using an Excel file to conveniently update due dates each semester",
+  "keywords": [
+      "moodle",
+      "academia"
+  ],
+  "main": "main.js",
+  "bin": {
+      "mmm": "./main.js"
+  },
+  "scripts": {
+  },
+  "dependencies": {
+    "@xmldom/xmldom": "^0.8.1",
+    "adm-zip": "^0.5.9",
+    "bl": "^5.0.0",
+    "fast-xml-parser": "^4.0.7",
+    "node-fetch": "^2.6.1",
+    "tar": "^6.1.11",
+    "xlsx": "^0.18.4",
+    "xmldom": "^0.6.0"
+  },
+  "devDependencies": {
+    "jsdom": "^16.5.3"
+  },
+  "author": "ech0 <mail@ech0.de>",
+  "license": "MIT"
+}
