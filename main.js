@@ -12,6 +12,10 @@ const serializer = new XMLSerializer();
 const patchedFiles = new Map();
 
 function patch(activity, file, element, value) {
+    if (!value) {
+        return;
+    }
+
     if (!activity.parsed[file]) {
         activity.parsed[file] = parser.parseFromString(activity.files[file].toString());
     }
@@ -43,10 +47,81 @@ function patch(activity, file, element, value) {
 function read(doc, element) {
     const x = doc.getElementsByTagName(element)?.[0]?.childNodes?.[0]?.nodeValue;
     if (!x) {
-        console.trace(serializer.serializeToString(doc), element);
+        // console.trace(serializer.serializeToString(doc), element);
         return '';
     }
     return x;
+}
+
+function parseAvailability(module) {
+    const availability = read(module, 'availability');
+    let availableFrom = null;
+    let availableTo = null;
+    try {
+        const parsed = JSON.parse(availability);
+        if (parsed.op === '&') {
+            availableFrom = parsed.c.find(e => e.type === 'date' && e.d === '>=')?.t;
+            availableTo = parsed.c.find(e => e.type === 'date' && e.d === '<')?.t;
+        }
+    } catch {
+        // ignore
+    }
+
+    const row = {};
+
+    if (availableFrom) {
+        row.availableFrom = new Date(availableFrom * 1000);
+    }
+    if (availableTo) {
+        row.availableTo = new Date(availableTo * 1000);
+    }
+
+    return row;
+}
+
+function patchAvailability(activity, module, file, patchData, row) {
+    const availability = read(module, 'availability');
+    if (process.argv[3] && (patchData.get(row.id)?.availableFrom?.getTime?.() !== row.availableFrom?.getTime?.() || patchData.get(row.id)?.availableTo?.getTime?.() !== row.availableTo?.getTime?.())) {
+        try {
+            if (availableFrom === null || availableTo === null) {
+                throw new Error('existing availability does not feature from and to dates');
+            }
+
+            const parsed = JSON.parse(availability);
+            // patch existing constraint
+            parsed.c.find(e => e.type === 'date' && e.d === '>=').t = Math.round(patchData.get(row.id).availableFrom.getTime() / 1000);
+            parsed.c.find(e => e.type === 'date' && e.d === '<').t = Math.round(patchData.get(row.id).availableTo.getTime() / 1000);
+
+            patch(activity, module, 'availability', JSON.stringify(availability));
+        } catch {
+            // default to creating a new availability constraint set
+            const availability = {
+                op: '&',
+                c: [],
+                showc: []
+            };
+
+            if (patchData.get(row.id)?.availableFrom?.getTime?.()) {
+                availability.showc.push(true);
+                availability.c.push({
+                    type: 'date',
+                    d: '>=',
+                    t: Math.round(patchData.get(row.id).availableFrom.getTime() / 1000)
+                });
+            }
+
+            if (patchData.get(row.id)?.availableTo?.getTime?.()) {
+                availability.showc.push(true);
+                availability.c.push({
+                    type: 'date',
+                    d: '<',
+                    t: Math.round(patchData.get(row.id).availableTo.getTime() / 1000)
+                });
+            }
+
+            patch(activity, module, file, 'availability', JSON.stringify(availability));
+        }
+    }
 }
 
 (async () => {
@@ -75,19 +150,32 @@ function read(doc, element) {
     });
 
     const rows = [];
+    const patchData = new Map();
+
     for (const [id, section] of sections.entries()) {
         const data = parser.parseFromString(section.files['section.xml'].toString());
         section.number = parseInt(read(data, 'number'), 10) * 1000;
         section.sequence = read(data, 'sequence').split(',');
 
-        rows.push({
+        const row = {
             id: id,
             name: read(data, 'name'),
             number: section.number
-        });
+        };
+
+        const availability = parseAvailability(data);
+        row.availableFrom = availability.availableFrom;
+        row.availableTo = availability.availableTo;
+
+        if (process.argv[3]) {
+            patchAvailability(section, data, 'section.xml', patchData, row);
+            patch(section, 'section.xml', 'name', patchData.get(row.id)?.name);
+        }
+        // console.log(serializer.serializeToString(data));
+
+        rows.push(row);
     }
 
-    let patchData = new Map();
     if (process.argv[3]) {
         // patch mode
         const workbook = XLSX.readFileSync(process.argv[3], {
@@ -117,69 +205,11 @@ function read(doc, element) {
             number: number + offset + 1
         };
 
-        const availability = read(module, 'availability');
-        let availableFrom = null;
-        let availableTo = null;
-        try {
-            const parsed = JSON.parse(availability);
-            if (parsed.op === '&') {
-                availableFrom = parsed.c.find(e => e.type === 'date' && e.d === '>=')?.t;
-                availableTo = parsed.c.find(e => e.type === 'date' && e.d === '<')?.t;
-            }
-        } catch {
-            // ignore
-        }
+        const availability = parseAvailability(module);
+        row.availableFrom = availability.availableFrom;
+        row.availableTo = availability.availableTo;
 
-        if (availableFrom) {
-            row.availableFrom = new Date(availableFrom * 1000);
-        }
-        if (availableTo) {
-            row.availableTo = new Date(availableTo * 1000);
-        }
-
-        if (process.argv[3] && (patchData.get(row.id)?.availableFrom?.getTime?.() !== row.availableFrom?.getTime?.() || patchData.get(row.id)?.availableTo?.getTime?.() !== row.availableTo?.getTime?.())) {
-            try {
-                if (availableFrom === null || availableTo === null) {
-                    throw new Error('existing availability does not feature from and to dates');
-                }
-
-                const parsed = JSON.parse(availability);
-                // patch existing constraint
-                parsed.c.find(e => e.type === 'date' && e.d === '>=').t = Math.round(patchData.get(row.id).availableFrom.getTime() / 1000);
-                parsed.c.find(e => e.type === 'date' && e.d === '<').t = Math.round(patchData.get(row.id).availableTo.getTime() / 1000);
-
-                patch(activity, 'module.xml', 'availability', JSON.stringify(availability));
-            } catch {
-                // default to creating a new availability constraint set
-                const availability = {
-                    op: '&',
-                    c: [],
-                    showc: []
-                };
-
-                if (patchData.get(row.id)?.availableFrom?.getTime?.()) {
-                    availability.showc.push(true);
-                    availability.c.push({
-                        type: 'date',
-                        d: '>=',
-                        t: Math.round(patchData.get(row.id).availableFrom.getTime() / 1000)
-                    });
-                }
-
-                if (patchData.get(row.id)?.availableTo?.getTime?.()) {
-                    availability.showc.push(true);
-                    availability.c.push({
-                        type: 'date',
-                        d: '<',
-                        t: Math.round(patchData.get(row.id).availableTo.getTime() / 1000)
-                    });
-                }
-
-                patch(activity, 'module.xml', 'availability', JSON.stringify(availability));
-            }
-        }
-
-        // todo patch
+        patchAvailability(activity, module, 'module.xml', patchData, row);
 
         const completionexpected = parseInt(read(module, 'completionexpected'), 10);
         if (completionexpected) {
