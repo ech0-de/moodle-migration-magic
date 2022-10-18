@@ -53,8 +53,8 @@ function read(doc, element) {
     return x;
 }
 
-function parseAvailability(module) {
-    const availability = read(module, 'availability');
+function parseAvailability(module, field='availability') {
+    const availability = read(module, field);
     let availableFrom = null;
     let availableTo = null;
     try {
@@ -79,8 +79,8 @@ function parseAvailability(module) {
     return row;
 }
 
-function patchAvailability(activity, module, file, patchData, row) {
-    const availability = read(module, 'availability');
+function patchAvailability(activity, module, file, patchData, row, field='availability') {
+    const availability = read(module, field);
     if (process.argv[3] && (patchData.get(row.id)?.availableFrom?.getTime?.() !== row.availableFrom?.getTime?.() || patchData.get(row.id)?.availableTo?.getTime?.() !== row.availableTo?.getTime?.())) {
         try {
             if (availableFrom === null || availableTo === null) {
@@ -119,7 +119,7 @@ function patchAvailability(activity, module, file, patchData, row) {
                 });
             }
 
-            patch(activity, module, file, 'availability', JSON.stringify(availability));
+            patch(activity, module, file, field, JSON.stringify(availability));
         }
     }
 }
@@ -163,15 +163,14 @@ function patchAvailability(activity, module, file, patchData, row) {
             number: section.number
         };
 
-        const availability = parseAvailability(data);
+        const availability = parseAvailability(data, 'availabilityjson');
         row.availableFrom = availability.availableFrom;
         row.availableTo = availability.availableTo;
 
         if (process.argv[3]) {
-            patchAvailability(section, data, 'section.xml', patchData, row);
+            patchAvailability(section, data, 'section.xml', patchData, row, 'availabilityjson');
             patch(section, 'section.xml', 'name', patchData.get(row.id)?.name);
         }
-        // console.log(serializer.serializeToString(data));
 
         rows.push(row);
     }
