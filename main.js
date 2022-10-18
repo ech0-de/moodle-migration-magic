@@ -80,11 +80,32 @@ function read(doc, element) {
         section.number = parseInt(read(data, 'number'), 10) * 1000;
         section.sequence = read(data, 'sequence').split(',');
 
-        rows.push({
+        const row = {
             id: id,
             name: read(data, 'name'),
             number: section.number
-        });
+        };
+
+        let availableFrom = null;
+        let availableTo = null;
+        try {
+            const parsed = JSON.parse(read(data, 'availabilityjson'));
+            if (parsed.op === '&') {
+                availableFrom = parsed.c.find(e => e.type === 'date' && e.d === '>=')?.t;
+                availableTo = parsed.c.find(e => e.type === 'date' && e.d === '<')?.t;
+            }
+        } catch {
+            // ignore
+        }
+
+        if (availableFrom) {
+            row.availableFrom = new Date(availableFrom * 1000);
+        }
+        if (availableTo) {
+            row.availableTo = new Date(availableTo * 1000);
+        }
+
+        rows.push(row);
     }
 
     let patchData = new Map();
