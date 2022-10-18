@@ -80,28 +80,24 @@ function parseAvailability(module, field='availability') {
 }
 
 function patchAvailability(activity, module, file, patchData, row, field='availability') {
-    const availability = read(module, field);
     if (process.argv[3] && (patchData.get(row.id)?.availableFrom?.getTime?.() !== row.availableFrom?.getTime?.() || patchData.get(row.id)?.availableTo?.getTime?.() !== row.availableTo?.getTime?.())) {
+        let availability;
         try {
-            if (availableFrom === null || availableTo === null) {
-                throw new Error('existing availability does not feature from and to dates');
-            }
-
-            const parsed = JSON.parse(availability);
-            // patch existing constraint
-            parsed.c.find(e => e.type === 'date' && e.d === '>=').t = Math.round(patchData.get(row.id).availableFrom.getTime() / 1000);
-            parsed.c.find(e => e.type === 'date' && e.d === '<').t = Math.round(patchData.get(row.id).availableTo.getTime() / 1000);
-
-            patch(activity, module, 'availability', JSON.stringify(availability));
+            availability = JSON.parse(read(module, field));
         } catch {
             // default to creating a new availability constraint set
-            const availability = {
+            availability = {
                 op: '&',
                 c: [],
                 showc: []
             };
+        }
 
-            if (patchData.get(row.id)?.availableFrom?.getTime?.()) {
+        if (patchData.get(row.id)?.availableFrom?.getTime?.()) {
+            const existingFrom = parsed.c.find(e => e.type === 'date' && e.d === '>=');
+            if (existingFrom) {
+                existingFrom.t = Math.round(patchData.get(row.id).availableFrom.getTime() / 1000);
+            } else {
                 availability.showc.push(true);
                 availability.c.push({
                     type: 'date',
@@ -109,8 +105,13 @@ function patchAvailability(activity, module, file, patchData, row, field='availa
                     t: Math.round(patchData.get(row.id).availableFrom.getTime() / 1000)
                 });
             }
+        }
 
-            if (patchData.get(row.id)?.availableTo?.getTime?.()) {
+        if (patchData.get(row.id)?.availableTo?.getTime?.()) {
+            const existingTo = parsed.c.find(e => e.type === 'date' && e.d === '<');
+            if (existingTo) {
+                existingTo.t = Math.round(patchData.get(row.id).availableTo.getTime() / 1000);
+            } else {
                 availability.showc.push(true);
                 availability.c.push({
                     type: 'date',
@@ -118,9 +119,9 @@ function patchAvailability(activity, module, file, patchData, row, field='availa
                     t: Math.round(patchData.get(row.id).availableTo.getTime() / 1000)
                 });
             }
-
-            patch(activity, module, file, field, JSON.stringify(availability));
         }
+
+        patch(activity, file, field, JSON.stringify(availability));
     }
 }
 
