@@ -39,7 +39,7 @@ function patch(activity, file, element, value) {
 
     if (e.nodeValue !== newValue) {
         e.replaceData(0, e.nodeValue.length, newValue);
-        console.log('patching', `${activity.path}${file}`, element, 'from', oldValue, 'to', value);
+        console.log('patching %s %s\n  - %s\n  + %s\n', `${activity.path}${file}`, element, oldValue, value);
         patchedFiles.set(`${activity.path}${file}`, doc);
     }
 }
@@ -94,7 +94,7 @@ function patchAvailability(activity, module, file, patchData, row, field='availa
         }
 
         if (patchData.get(row.id)?.availableFrom?.getTime?.()) {
-            const existingFrom = parsed.c.find(e => e.type === 'date' && e.d === '>=');
+            const existingFrom = availability.c.find(e => e.type === 'date' && e.d === '>=');
             if (existingFrom) {
                 existingFrom.t = Math.round(patchData.get(row.id).availableFrom.getTime() / 1000);
             } else {
@@ -108,7 +108,7 @@ function patchAvailability(activity, module, file, patchData, row, field='availa
         }
 
         if (patchData.get(row.id)?.availableTo?.getTime?.()) {
-            const existingTo = parsed.c.find(e => e.type === 'date' && e.d === '<');
+            const existingTo = availability.c.find(e => e.type === 'date' && e.d === '<');
             if (existingTo) {
                 existingTo.t = Math.round(patchData.get(row.id).availableTo.getTime() / 1000);
             } else {
@@ -150,9 +150,26 @@ function patchAvailability(activity, module, file, patchData, row, field='availa
         }
     });
 
-    const rows = [];
     const patchData = new Map();
 
+    if (process.argv[3]) {
+        // patch mode
+        const workbook = XLSX.readFileSync(process.argv[3], {
+            cellDates: true,
+            dateNF: 'YYYY-MM-DD hh:mm:ss'
+        });
+        const data = XLSX.utils.sheet_to_json(workbook.Sheets['moodle-data']);
+        data.forEach((row) => {
+            if (['completionexpected', 'availableFrom', 'availableTo', 'allowsubmissionsfromdate', 'duedate', 'cutoffdate'].some(e => !(row[e] instanceof Date || row[e] === undefined))) {
+                console.error(`invalid date in row ${i}`);
+                console.error(row);
+                process.exit(1);
+            }
+            patchData.set(row.id, row);
+        });
+    }
+
+    const rows = [];
     for (const [id, section] of sections.entries()) {
         const data = parser.parseFromString(section.files['section.xml'].toString());
         section.number = parseInt(read(data, 'number'), 10) * 1000;
@@ -174,23 +191,6 @@ function patchAvailability(activity, module, file, patchData, row, field='availa
         }
 
         rows.push(row);
-    }
-
-    if (process.argv[3]) {
-        // patch mode
-        const workbook = XLSX.readFileSync(process.argv[3], {
-            cellDates: true,
-            dateNF: 'YYYY-MM-DD hh:mm:ss'
-        });
-        const data = XLSX.utils.sheet_to_json(workbook.Sheets['moodle-data']);
-        data.forEach((row) => {
-            if (['completionexpected', 'availableFrom', 'availableTo', 'allowsubmissionsfromdate', 'duedate', 'cutoffdate'].some(e => !(row[e] instanceof Date || row[e] === undefined))) {
-                console.error(`invalid date in row ${i}`);
-                console.error(row);
-                process.exit(1);
-            }
-            patchData.set(row.id, row);
-        });
     }
 
     for (const [id, activity] of activities.entries()) {
