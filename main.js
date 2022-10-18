@@ -200,6 +200,7 @@ function read(doc, element) {
                 patch(activity, 'assign.xml', 'allowsubmissionsfromdate', patchData.get(row.id)?.allowsubmissionsfromdate);
                 patch(activity, 'assign.xml', 'duedate', patchData.get(row.id)?.duedate);
                 patch(activity, 'assign.xml', 'cutoffdate', patchData.get(row.id)?.cutoffdate);
+                patch(activity, 'assign.xml', 'name', patchData.get(row.id)?.name);
             }
         } else if (activity.files['quiz.xml']) {
             const doc = parser.parseFromString(activity.files['quiz.xml'].toString());
@@ -211,10 +212,15 @@ function read(doc, element) {
             if (process.argv[3]) {
                 patch(activity, 'quiz.xml', 'timeopen', patchData.get(row.id)?.allowsubmissionsfromdate);
                 patch(activity, 'quiz.xml', 'timeclose', patchData.get(row.id)?.duedate);
+                patch(activity, 'quiz.xml', 'name', patchData.get(row.id)?.name);
             }
         } else {
             const doc = parser.parseFromString(activity.files[`${read(module, 'modulename')}.xml`].toString());
             row.name = read(doc, 'name').split('\n')[0].trim();
+
+            if (process.argv[3]) {
+                patch(activity, `${read(module, 'modulename')}.xml`, 'name', patchData.get(row.id)?.name);
+            }
         }
         rows.push(row);
     }
