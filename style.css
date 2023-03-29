@@ -1,0 +1,63 @@
+.drop-area {
+  border: 2px dashed #ccc;
+  border-radius: 20px;
+  width: min(480px, 85vw);
+  margin: 50px auto;
+  padding: 5px 20px;
+  position: relative;
+}
+
+.drop-area.highlight {
+  border-color: purple;
+}
+
+.drop-area input { width: calc(100% - 20px); }
+
+
+.loading::before {
+  content: '';
+  background-color: var(--background);
+  height: 0.5rem;
+  border-radius: 9999px;
+  position: absolute;
+  bottom: .5rem;
+  left: 20px;
+  right: 20px;
+}
+
+.loading::after {
+  content: '';
+  height: 0.5rem;
+  border-radius: 9999px;
+  position: absolute;
+  bottom: .5rem;
+  left: 20px;
+  right: 20px;
+
+  background-color: var(--selection);
+  animation-duration: 1.5s;
+  animation-iteration-count: infinite;
+  animation-name: indeterminate-progress-bar;
+}
+
+@keyframes indeterminate-progress-bar {
+  0% { transform:  translateX(-50%) scaleX(0); }
+  50% { transform:  translateX(0%) scaleX(0.5); }
+  100% { transform:  translateX(50%) scaleX(0); }
+}
+
+figure{ 
+  margin: 2em 0em;
+  padding: 0;
+}
+
+figure img {
+  max-width: calc(100% - 4em);
+  margin-inline: 1em;
+  border: 1em solid white;
+  outline: 2px solid var(--selection);
+}
+
+.center {
+  text-align: center;
+}

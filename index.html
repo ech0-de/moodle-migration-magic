@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/mmm.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>moodle migration magic</title>
+
+    <meta name="description" content="A tool that allows patching a Moodle backup using an xlsx file to conveniently update due dates each semester." />
+    <meta name="keywords" content="moodle, academia" />
+    <meta name="author" content="ech0" />
+  </head>
+  <body>
+    <div class="center">
+      <img src="/mmm.svg" alt="" />
+      <h1>✨ moodle migration magic ✨</h1>
+
+      <b>⚠ this project is still work in progress, use with caution! 👷‍♀️</b>
+    </div>
+
+    <blockquote>
+      This nifty tools allows you to convert a moodle course backup into a spreadsheet to easily update course information in bulk, such as due dates of exercise submissions.
+      Once you edited the spreadsheet to your liking, you can patch your course backup with the changes in the spreadsheet to generate a new backup that can then be imported into moodle.
+      This conversion and patching happens all in your browser, no course data will leave your device.
+      If something is not working or a feature is missing, feel free to open an issue or pull request on <a href="https://github.com/ech0-de/moodle-migration-magic" target="_blank" rel="noreferrer noopener">GitHub</a>.
+    </blockquote>
+
+    <h2>Contents</h2>
+    <ul>
+      <li><a href="#step1">Step 1: Create a Suitable Course Backup</a></li>
+      <li><a href="#step2">Step 2: Create Spreadsheet Representation</a></li>
+      <li><a href="#step3">Step 3: Apply Patch</a></li>
+      <li><a href="#step4">Step 4: Import Patched Backup into Moodle</a></li>
+    </ul>
+
+    <h2 id="step1">Step 1: Create a Suitable Course Backup</h2>
+    <p>
+      Navigate to your existing course that you want to use as a template and navigate to "Backup" within the course administration menu.
+
+      <figure>
+        <img src="assets/backup1.png" />
+      </figure>
+
+      Alternatively, you can directly navigate to <code>https://moodle.example.com/backup/backup.php?id=YOUR_COURSE_ID</code>.
+
+      Here you can freely select what you want to export, the only important setting is to <b>NOT</b> check "IMS Common Cartridge 1.1" so that the resulting backup is in Moodle's native backup format <code>.mbz</code>.
+
+      <figure>
+        <img src="assets/backup2.png" />
+      </figure>
+
+      In the next screen you can optionally exclude some activities from the course or simply continue.
+      The last screen gives you an overview of the backup to be performed and allows you the enter a filename for your backup, which you may change or simply keep the default name.
+      Then click "Perform backup" and wait until it is completed.
+
+      <figure>
+        <img src="assets/backup3.png" />
+      </figure>
+
+      Once it is completed you can download your backup from the overview page.
+    </p>
+
+    <h2 id="step2">Step 2: Create Spreadsheet Representation</h2>
+    <div id="backup-upload"></div>
+    <h4>Log Output</h4>
+    <pre><code id="backup-log"></code></pre>
+
+    <h2 id="step3">Step 3: Apply Patch</h2>
+    <div id="patch-upload">
+      <blockquote>⚠ You first have to select your Moodle backup file in step 2.</blockquote>
+    </div>
+    <h4>Log Output</h4>
+    <pre><code id="patch-log"></code></pre>
+
+    <h2 id="step4">Step 4: Import Patched Backup into Moodle</h2>
+    <p>hopefully coming soon 😅</p>
+
+    <script type="module" src="/main.js"></script>
+  </body>
+</html>
