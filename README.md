@@ -1,4 +1,4 @@
-<p align="center">
+<p style="padding-left: 90px;">
   <img width="200" src="./public/mmm.svg">
 </p>
 
@@ -8,7 +8,7 @@ A tool that allows patching a Moodle backup using an Excel file to conveniently 
 ⚠ Still work in progress and very hacky! Use with caution! 👷‍♀️
 
 ## 🚀 Getting Started
-TODO
+Navigate to the [GitHub-Pages deployment](https://ech0-de.github.io/moodle-migration-magic/) and follow the instructions there.
 
 ## 🛠 Development
  1. Clone repo
