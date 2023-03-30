@@ -46,7 +46,7 @@
   100% { transform:  translateX(50%) scaleX(0); }
 }
 
-figure{ 
+figure {
   margin: 2em 0em;
   padding: 0;
 }
@@ -60,4 +60,19 @@ figure img {
 
 .center {
   text-align: center;
+}
+.large {
+  font-size: 100pt;
+}
+
+ul.no-bullets {
+  list-style-type: none;
+  padding-left: 1em;
+}
+
+footer {
+  font-size: 70%;
+  display: flex;
+  justify-content: center;
+  gap: 2em;
 }

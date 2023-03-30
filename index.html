@@ -38,8 +38,10 @@
     <ul>
       <li><a href="#step1">Step 1: Create a Suitable Course Backup</a></li>
       <li><a href="#step2">Step 2: Create Spreadsheet Representation</a></li>
-      <li><a href="#step3">Step 3: Apply Patch</a></li>
-      <li><a href="#step4">Step 4: Import Patched Backup into Moodle</a></li>
+      <li><a href="#step3">Step 3: Alter Patch File</a></li>
+      <li><a href="#step4">Step 4: Apply Patch</a></li>
+      <li><a href="#step5">Step 5: Import Patched Backup into Moodle</a></li>
+      <li><a href="#step6">Step 6: Enjoy Your Newly Provisioned Moodle Course</a></li>
     </ul>
 
     <h2 id="step1">Step 1: Create a Suitable Course Backup</h2>
@@ -74,15 +76,153 @@
     <h4>Log Output</h4>
     <pre><code id="backup-log"></code></pre>
 
-    <h2 id="step3">Step 3: Apply Patch</h2>
+    <h2 id="step3">Step 3: Alter Patch File</h2>
+    <p>
+      Now you can use your favorite spreadsheet application to update certain properties of the course's activities.
+
+      <figure>
+        <img src="assets/spreadsheet.png" />
+      </figure>
+      
+      The columns represent different properties that can be assigned to an activity within Moodle.
+      However, not every column is respected for every activity type, as detailed in the following table.
+    </p>
+
+    <p>
+      <table>
+        <thead>
+          <tr>
+            <th>Property</th>
+            <th>Assignments</th>
+            <th>Quizzes</th>
+            <th>Label</th>
+            <th>Section</th>
+            <th>Other</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th><code>name</code></th>
+            <td>✅</td>
+            <td>✅</td>
+            <td>⚠ <a href="https://github.com/ech0-de/moodle-migration-magic/issues/1" target="_blank" rel="noopener noreferrer">[#1]</a></td>
+            <td>✅</td>
+            <td>✅</td>
+          </tr>
+          <tr>
+            <th><code>completionexpected</code></th>
+            <td>✅</td>
+            <td>✅</td>
+            <td>❌</td>
+            <td>✅</td>
+            <td>✅</td>
+          </tr>
+          <tr>
+            <th><code>availableFrom</code>¹</th>
+            <td>✅</td>
+            <td>✅</td>
+            <td>✅</td>
+            <td>✅</td>
+            <td>✅</td>
+          </tr>
+          <tr>
+            <th><code>availableTo</code>¹</th>
+            <td>✅</td>
+            <td>✅</td>
+            <td>✅</td>
+            <td>✅</td>
+            <td>✅</td>
+          </tr>
+          <tr>
+            <th><code>allowsubmissionsfromdate</code></th>
+            <td>✅</td>
+            <td>✅²</td>
+            <td>❌</td>
+            <td>❌</td>
+            <td>❌</td>
+          </tr>
+          <tr>
+            <th><code>duedate</code></th>
+            <td>✅</td>
+            <td>✅³</td>
+            <td>❌</td>
+            <td>❌</td>
+            <td>❌</td>
+          </tr>
+          <tr>
+            <th><code>cutoffdate</code></th>
+            <td>✅</td>
+            <td>❌</td>
+            <td>❌</td>
+            <td>❌</td>
+            <td>❌</td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="6">
+              <small>
+                <b>Legend:</b>
+                ✅ = supported,
+                ❌ = not supported,
+                ⚠ = partially supported
+              </small>
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+
+      <small>
+        <ul class="no-bullets">
+          <li>¹ setting availability may overwrite with existing availability rules other than time-based</li>
+          <li>² <code>allowsubmissionsfromdate</code> is internally mapped to moodle's <code>timeopen</code></li>
+          <li>³ <code>duedate</code> is internally mapped to moodle's <code>timeclose</code></li>
+        </ul>
+      </small>
+    </p>
+
+    <h2 id="step4">Step 4: Apply Patch</h2>
     <div id="patch-upload">
       <blockquote>⚠ You first have to select your Moodle backup file in step 2.</blockquote>
     </div>
     <h4>Log Output</h4>
     <pre><code id="patch-log"></code></pre>
 
-    <h2 id="step4">Step 4: Import Patched Backup into Moodle</h2>
-    <p>hopefully coming soon 😅</p>
+    <h2 id="step5">Step 5: Import Patched Backup into Moodle</h2>
+    <p>
+      Now navigate to your new course where you want to import the patched backup and navigate to "Restore" within the course administration menu.
+
+      <figure>
+        <img src="assets/import1.png" />
+      </figure>
+
+      Here you can simply drag-and-drop your patched .mbz file or upload it using the file chooser.
+
+      <figure>
+        <img src="assets/import2.png" />
+      </figure>
+
+      Once uploaded click "Restore", which will not actually restore the backup yet, but instead leads you to a wizard that guides you through the restoriation process.
+      This wizard for example allows you to specify whether the current course contents should be deleted before import or if activities should be merged (Note: merging unfortunately means keeping both old and new, there unfortunately is no option to modify existing activies using the restore process).
+    </p>
+    <p>
+      ℹ We highly recommend to only use the restore process to provision empty courses and not update existing courses.
+      The later might otherwise result in data loss, depending on your user's privileges.
+    </p>
+
+    <h2 id="step6">Step 6: Enjoy Your Newly Provisioned Moodle Course</h2>
+    <p class="center">
+      <span class="large">😎</span>
+    </p>
+
+    <footer class="center">
+      <div>
+        made with ❤️🧡💛💚💙💜 by <a href="https://ech0.de" target="_blank" rel="noreferrer noopener">ech0</a>
+      </div>
+      <div>
+        code available on <a href="https://github.com/ech0-de/moodle-migration-magic" target="_blank" rel="noreferrer noopener">GitHub</a> under MIT license
+      </div>
+    </footer>
 
     <script type="module" src="/main.js"></script>
   </body>
