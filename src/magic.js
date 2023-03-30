@@ -301,12 +301,16 @@ export async function processBackup(file, patchData = false, log = console.log) 
           patch(activity, 'quiz.xml', 'timeclose', patchData.get(row.id)?.duedate);
           patch(activity, 'quiz.xml', 'name', patchData.get(row.id)?.name);
         }
+      } else if (activity.files['label.xml']) {
+        const doc = parser.parseFromString(activity.files['label.xml'].toString(), 'application/xml');
+        row.name = read(doc, 'name');
       } else {
-        const doc = parser.parseFromString(activity.files[`${read(module, 'modulename')}.xml`].toString(), 'application/xml');
-        row.name = read(doc, 'name').split('\n')[0].trim();
+        const type = `${read(module, 'modulename')}.xml`;
+        const doc = parser.parseFromString(activity.files[type].toString(), 'application/xml');
+        row.name = read(doc, 'name');
 
         if (patchData) {
-          patch(activity, `${read(module, 'modulename')}.xml`, 'name', patchData.get(row.id)?.name);
+          patch(activity, type, 'name', patchData.get(row.id)?.name);
         }
       }
       rows.push(row);
