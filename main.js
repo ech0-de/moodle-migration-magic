@@ -1,5 +1,5 @@
 import 'water.css';
-import './style.css';
+import './src/style.css';
 
 import { processBackup, processPatchFile } from './src/magic';
 
@@ -91,7 +91,6 @@ setupFilePicker(
         }
 
         const result = await processBackup(backupFile, patchData, logger);
-        console.log(result);
 
         const download = document.createElement('a');
         download.innerText = '✅ Download Patched Course Backup'
