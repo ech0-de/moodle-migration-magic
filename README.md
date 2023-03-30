@@ -1,5 +1,5 @@
 <p style="padding-left: 90px;">
-  <img width="200" src="./public/mmm.svg">
+  <a href="https://ech0-de.github.io/moodle-migration-magic/"><img width="200" src="./public/mmm.svg"></a>
 </p>
 
 # ✨ moodle-migration-magic ✨
