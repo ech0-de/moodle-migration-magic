@@ -175,12 +175,12 @@ export async function processPatchFile(file, log = console.log) {
     const data = XLSX.utils.sheet_to_json(workbook.Sheets['moodle-data']);
     for (const [i, row] of data.entries()) {
       for (const e of COLUMNS) {
-        if (!(row[e] instanceof Date || row[e] === undefined)) {
+        if (row[e] && !(row[e] instanceof Date || row[e] === undefined)) {
           // try to parse string as date as a fallback
           const d = new Date(row[e]);
           if (isNaN(d)) {
             // failed to parse, exit
-            logger(`ERROR: invalid date in row ${i}`);
+            logger(`ERROR: invalid date in row ${i}: ${row[e]}`);
             logger(row);
             return;
           } else {
