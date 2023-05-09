@@ -16,7 +16,7 @@
     "preview": "vite preview"
   },
   "devDependencies": {
-    "vite": "^4.2.0"
+    "vite": "^4.3.5"
   },
   "dependencies": {
     "@gera2ld/tarjs": "^0.2.2",
