@@ -46,10 +46,16 @@
 
     <h2 id="step1">Step 1: Create a Suitable Course Backup</h2>
     <p>
-      Navigate to your existing course that you want to use as a template and navigate to "Backup" within the course administration menu.
+      Navigate to your existing course that you want to use as a template and navigate to "Course Reuse" within the course administration menu.
 
       <figure>
         <img src="assets/backup1.png" />
+      </figure>
+
+      Then select "Backup" instead of "Import" in the dropdown menu.
+
+      <figure>
+        <img src="assets/backup2.png" />
       </figure>
 
       Alternatively, you can directly navigate to <code>https://moodle.example.com/backup/backup.php?id=YOUR_COURSE_ID</code>.
@@ -57,7 +63,7 @@
       Here you can freely select what you want to export, the only important setting is to <b>NOT</b> check "IMS Common Cartridge 1.1" so that the resulting backup is in Moodle's native backup format <code>.mbz</code>.
 
       <figure>
-        <img src="assets/backup2.png" />
+        <img src="assets/backup3.png" />
       </figure>
 
       In the next screen you can optionally exclude some activities from the course or simply continue.
@@ -65,10 +71,10 @@
       Then click "Perform backup" and wait until it is completed.
 
       <figure>
-        <img src="assets/backup3.png" />
+        <img src="assets/backup4.png" />
       </figure>
 
-      Once it is completed you can download your backup from the overview page.
+      Once it is completed you can download your backup from the "Restore" page.
     </p>
 
     <h2 id="step2">Step 2: Create Spreadsheet Representation</h2>
@@ -190,11 +196,19 @@
 
     <h2 id="step5">Step 5: Import Patched Backup into Moodle</h2>
     <p>
-      Now navigate to your new course where you want to import the patched backup and navigate to "Restore" within the course administration menu.
+      Now navigate to your new course where you want to import the patched backup and navigate to "Course Reuse" within the course administration menu.
+
+      <figure>
+        <img src="assets/backup1.png" />
+      </figure>
+
+      Then you select "Restore" in the displayed dropdown menu.
 
       <figure>
         <img src="assets/import1.png" />
       </figure>
+
+      Alternatively, you can directly navigate to <code>https://moodle.example.com/backup/restorefile.php?id=YOUR_COURSE_ID</code>.
 
       Here you can simply drag-and-drop your patched .mbz file or upload it using the file chooser.
 
