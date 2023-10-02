@@ -1,3 +1,6 @@
+*.mbz
+*.xlsx
+
 # Logs
 logs
 *.log

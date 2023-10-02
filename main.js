@@ -67,7 +67,13 @@ setupFilePicker(
   '.mbz',
   async (backupFile, loader, form) => {
     const logger = setupLogger('#backup-log');
-    const result = await processBackup(backupFile, false, logger);
+    const b = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = (e) => reject(e);
+      reader.onload = (e) => resolve(e.target.result);
+      reader.readAsArrayBuffer(backupFile);
+    });
+    const result = await processBackup(b, backupFile.name, false, logger);
 
     const download = document.createElement('a');
     download.innerText = '✅ Download Course Spreadsheet'
@@ -85,12 +91,25 @@ setupFilePicker(
       '.xlsx',
       async (file, loader, form) => {
         const logger = setupLogger('#patch-log');
-        const patchData = await processPatchFile(file, logger);
+        const f = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onerror = (e) => reject(e);
+          reader.onload = (e) => resolve(e.target.result);
+          reader.readAsArrayBuffer(file);
+        });
+        const patchData = await processPatchFile(f, logger);
         if (!patchData) {
           alert('ERROR: patch file is invalid');
         }
 
-        const result = await processBackup(backupFile, patchData, logger);
+        const b = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onerror = (e) => reject(e);
+          reader.onload = (e) => resolve(e.target.result);
+          reader.readAsArrayBuffer(backupFile);
+        });
+
+        const result = await processBackup(b, backupFile.name, patchData, logger);
 
         const download = document.createElement('a');
         download.innerText = '✅ Download Patched Course Backup'

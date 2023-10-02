@@ -1,14 +1,20 @@
 {
   "name": "moodle-migration-magic",
+  "bin": {
+      "moodle-migration-magic": "./bin/mmm.js"
+  },
   "description": "A tool that allows patching a Moodle backup using an xlsx file to conveniently update due dates each semester.",
   "keywords": [
     "moodle",
     "academia"
   ],
+  "files": [
+    "bin/mmm.js",
+    "src/magic.js"
+  ],
   "author": "ech0 <mail@ech0.de>",
   "license": "MIT",
-  "private": true,
-  "version": "2.0.0",
+  "version": "2.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -20,6 +26,7 @@
   },
   "dependencies": {
     "@gera2ld/tarjs": "^0.2.2",
+    "@xmldom/xmldom": "^0.8.10",
     "pako": "^2.1.0",
     "water.css": "^2.1.1",
     "xlsx": "^0.18.5"

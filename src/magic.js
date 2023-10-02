@@ -1,8 +1,12 @@
 import pako from 'pako';
 import * as XLSX from 'xlsx';
-import { TarFileType, TarReader, TarWriter } from '@gera2ld/tarjs';
+import * as tarjs from '@gera2ld/tarjs';
+import xmldom from '@xmldom/xmldom';
 
-if (TarFileType[0]) {
+const { TarFileType, TarReader, TarWriter } = tarjs?.default?.tarball || tarjs;
+const { DOMParser, XMLSerializer } = xmldom;
+
+if (TarFileType?.[0]) {
     // todo workaround until https://github.com/gera2ld/tarjs/pull/1 is merged
     TarFileType.File = 48;
     TarFileType.Dir = 53;
@@ -60,18 +64,7 @@ function read(doc, element) {
 }
 
 function deflateFile(file, inflate=false) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = reject;
-    reader.onload = (evt) => {
-      if (inflate) {
-        resolve(pako.ungzip(evt.target.result));
-      } else {
-        resolve(pako.gzip(evt.target.result));
-      }
-    };
-    reader.readAsArrayBuffer(file);
-  });
+  return inflate ? pako.ungzip(file) : pako.gzip(file);
 }
 
 function inflateFile(file) {
@@ -162,16 +155,11 @@ export async function processPatchFile(file, log = console.log) {
   logger = log;
   try {
     const patchData = new Map();
-    const workbook = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onerror = (e) => reject(e);
-      reader.onload = (e) => resolve(XLSX.read(e.target.result, {
-        type: 'binary',
-        cellDates: true,
-        dateNF: 'YYYY-MM-DD hh:mm:ss'
-      }));
-      reader.readAsBinaryString(file);
+    const workbook = XLSX.read(file, {
+      cellDates: true,
+      dateNF: 'YYYY-MM-DD hh:mm:ss'
     });
+
     const data = XLSX.utils.sheet_to_json(workbook.Sheets['moodle-data']);
     for (const [i, row] of data.entries()) {
       for (const e of COLUMNS) {
@@ -197,7 +185,7 @@ export async function processPatchFile(file, log = console.log) {
   }
 }
 
-export async function processBackup(file, patchData = false, log = console.log) {
+export async function processBackup(file, filename, patchData = false, log = console.log) {
   logger = log;
   try {
     patchedFiles = new Map();
@@ -338,7 +326,7 @@ export async function processBackup(file, patchData = false, log = console.log) 
         ]
       });
       worksheet['!cols'] = [20, 80, 20, 20, 20, 20, 20, 20].map(e => ({ wch: e }));
-      const name = `${file.name.replace(/\.[^.]*$/, '')}.xlsx`;
+      const name = `${filename.replace(/\.[^.]*$/, '')}.xlsx`;
       XLSX.utils.book_append_sheet(workbook, worksheet, 'moodle-data');
       const res = XLSX.write(workbook, { type: 'array'});
       logger(`wrote data to ${name}`);
@@ -349,7 +337,7 @@ export async function processBackup(file, patchData = false, log = console.log) 
     } else {
       logger();
       logger('writing patched archive...');
-      const patchedArchive = `${file.name.replace(/\.[^.]*$/, '.patched')}.mbz`;
+      const patchedArchive = `${filename.replace(/\.[^.]*$/, '.patched')}.mbz`;
 
       const writer = new TarWriter();
       const mtime = Date.now();
@@ -366,7 +354,8 @@ export async function processBackup(file, patchData = false, log = console.log) 
       }
 
       const blob = await writer.write();
-      const compressedBackup = await deflateFile(blob);
+      const result = await blob.arrayBuffer();
+      const compressedBackup = await deflateFile(result);
       logger(`wrote archive to ${patchedArchive}`);
 
       return {
