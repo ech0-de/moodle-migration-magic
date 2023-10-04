@@ -23,6 +23,11 @@ Usage: npx mmm BACKUP.mbz [PATCH.xlsx]
  --force   overwrite output file if it already exists
  --files   produce and consume a zip patch file that also contains
            editable activity contents (EXPERIMENTAL)
+
+
+Hint: the full documentation of the process is available
+      in the web deployment of moodle-migration-magic:
+      -> https://ech0-de.github.io/moodle-migration-magic/
 ```
 
 ## 🛠 Development
