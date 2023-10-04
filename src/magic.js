@@ -419,7 +419,7 @@ export async function processBackup(file, filename, flags = [], patchData = fals
 
       logger(`creating archive ${archive}`);
       const zip = new AdmZip();
-      zip.addFile(name, res);
+      zip.addFile(name, Buffer.from(res));
       for (const [p, f] of Object.entries(contents)) {
         zip.addFile(p, f);
       }
