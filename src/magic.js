@@ -169,7 +169,7 @@ function extractAndPatchContent(number, index, name, doc, patchData, activity, f
   const path = `sections/${String(number + 1).padStart(2, '0')}/${String(index + 1).padStart(3, '0')}_${name.toLowerCase().replace(/[^a-z0-9_\-]/g, '-').slice(0, 20).replace(/--+/, '-').replace(/-$/, '')}.${type}.${suffix}`;
   contents[path] = intro;
 
-  if (patchContents[path] !== contents[path]) {
+  if (patchData && patchContents[path] !== contents[path]) {
     const e = doc.getElementsByTagName('intro')[0].childNodes[0];
     e.replaceData(0, e.nodeValue.length, patchContents[path]);
     logger(`patching ${activity.path}${file} intro\n  - ${JSON.stringify(contents[path])}\n  + ${JSON.stringify(patchContents[path])}\n`);
