@@ -2,7 +2,7 @@
 
 import { basename } from 'node:path';
 import { readFile, writeFile, stat } from 'node:fs/promises';
-import { processBackup, processPatchFile } from '../src/magic.js';
+import { processBackup, processPatchFile, FLAGS } from '../src/magic.js';
 
 const args = process.argv.slice(2).filter(e => !/^-.*/.test(e));
 const flags = process.argv.slice(2).filter(e => /^-.*/.test(e));
@@ -10,11 +10,36 @@ const flags = process.argv.slice(2).filter(e => /^-.*/.test(e));
 if (args.length !== 1 && args.length !== 2 || flags.includes('-h') || flags.includes('--help')) {
   console.error('Usage: npx mmm BACKUP.mbz [PATCH.xlsx]');
   console.error();
-  console.error(' --help    output this help text');
-  console.error(' --force   overwrite output file if it already exists');
-  console.error(' --files   produce and consume a zip patch file that');
-  console.error('           also contains editable activity contents');
 
+  const flags = {
+      '--help': 'output this help text',
+      '--force': 'overwrite output file if it already exists',
+      ...FLAGS
+  };
+
+  const padding = Math.max(...Object.keys(FLAGS).map(e => e.length));
+  const spaces = Array(padding + 3).fill(' ').join('');
+
+  for (const flag of Object.keys(flags)) {
+    const words = flags[flag].split(' ');
+    let line = ` ${flag.padEnd(padding)}  `;
+
+    while (words.length) {
+      while (words.length && (line.length + words[0].length) < 70) {
+        line += ` ${words.shift()}`;
+      }
+
+      console.error(line);
+      line = spaces;
+    }
+  }
+
+  console.error();
+  console.error();
+  console.error('Hint: the full documentation of the process is available');
+  console.error('      in the web deployment of moodle-migration-magic:');
+  console.error('      -> https://ech0-de.github.io/moodle-migration-magic/');
+  console.error();
   process.exit(1);
 }
 
@@ -29,14 +54,14 @@ if (args.length !== 1 && args.length !== 2 || flags.includes('-h') || flags.incl
 let patchData = false;
 if (args.length === 2) {
   const file = await readFile(args[1]);
-  patchData = await processPatchFile(file);
+  patchData = await processPatchFile(file, flags);
   if (!patchData) {
     console.error('ERROR: patch file is invalid');
   }
 }
 
 const backupFile = await readFile(args[0]);
-const result = await processBackup(backupFile, basename(args[0]), patchData);
+const result = await processBackup(backupFile, basename(args[0]), flags, patchData);
 
 try {
   const s = await stat(result.name);

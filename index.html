@@ -111,7 +111,7 @@
             <th><code>name</code></th>
             <td>✅</td>
             <td>✅</td>
-            <td>⚠ <a href="https://github.com/ech0-de/moodle-migration-magic/issues/1" target="_blank" rel="noopener noreferrer">[#1]</a></td>
+            <td>⚠⁵</td>
             <td>✅</td>
             <td>✅</td>
           </tr>
@@ -163,6 +163,14 @@
             <td>❌</td>
             <td>❌</td>
           </tr>
+          <tr>
+            <th><code>intro</code></th>
+            <td>✅⁴</td>
+            <td>❌</td>
+            <td>✅⁴</td>
+            <td>❌</td>
+            <td>❌</td>
+          </tr>
         </tbody>
         <tfoot>
           <tr>
@@ -183,6 +191,8 @@
           <li>¹ setting availability may overwrite with existing availability rules other than time-based</li>
           <li>² <code>allowsubmissionsfromdate</code> is internally mapped to moodle's <code>timeopen</code></li>
           <li>³ <code>duedate</code> is internally mapped to moodle's <code>timeclose</code></li>
+          <li>⁴ only when zip patch file (<code>--files</code>) is enabled</li>
+          <li>⁵ <code>name</code> of a label is a shortened readonly version of <code>intro</code>, therefore you might want to edit <code>intro</code> instead <a href="https://github.com/ech0-de/moodle-migration-magic/issues/1" target="_blank" rel="noopener noreferrer">[#1]</a>
         </ul>
       </small>
     </p>
