@@ -137,7 +137,7 @@ function setupPatchUpload() {
       const result = await processBackup(b, loadedBackup.name, [...flags], patchData, logger);
 
       const download = document.createElement('a');
-      download.innerText = '✅ Download Patched Course Backup'
+      download.innerText = '✅ Download Patched Course Backup';
       download.download = result.name;
       form.appendChild(download);
 
@@ -165,7 +165,7 @@ setupFilePicker(
     loadedBackup = backupFile;
 
     const download = document.createElement('a');
-    download.innerText = '✅ Download Course Spreadsheet'
+    download.innerText = '✅ Download Course Spreadsheet';
     download.download = result.name;
     form.appendChild(download);
 
