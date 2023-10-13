@@ -198,7 +198,7 @@ export async function processPatchFile(file, flags = [], log = console.log) {
       const zip = new AdmZip(file);
 
       for (const entry of zip.getEntries()) {
-        if (entry.entryName.indexOf('/') < 0 && entry.entryName.endsWith('.xlsx')) {
+        if (entry.entryName.indexOf('/') < 0 && entry.entryName.endsWith('.xlsx') && !entry.entryName.startsWith('~')) {
           // continue normal patching with extracted xlsx
           file = entry.getData();
           xlsxFound = true;
@@ -342,11 +342,17 @@ export async function processBackup(file, filename, flags = [], patchData = fals
       if (activity.files['label.xml']) {
         const doc = parser.parseFromString(activity.files['label.xml'].toString(), 'application/xml');
         row.name = read(doc, 'name');
-        extractAndPatchContent(number, index, row.name, doc, patchData, activity, 'label.xml');
+
+        if (flags.includes('--files')) {
+          extractAndPatchContent(number, index, row.name, doc, patchData, activity, 'label.xml');
+        }
       } else if (activity.files['assign.xml']) {
         const doc = parser.parseFromString(activity.files['assign.xml'].toString(), 'application/xml');
         row.name = read(doc, 'name');
-        extractAndPatchContent(number, index, row.name, doc, patchData, activity, 'assign.xml');
+
+        if (flags.includes('--files')) {
+          extractAndPatchContent(number, index, row.name, doc, patchData, activity, 'assign.xml');
+        }
         row.allowsubmissionsfromdate = new Date(parseInt(read(doc, 'allowsubmissionsfromdate'), 10) * 1000);
         row.duedate = new Date(parseInt(read(doc, 'duedate'), 10) * 1000);
         row.cutoffdate = new Date(parseInt(read(doc, 'cutoffdate'), 10) * 1000);
