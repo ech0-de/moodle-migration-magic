@@ -1,23 +1,31 @@
 import 'water.css';
 import './src/style.css';
 
-import { processBackup, processPatchFile, FLAGS } from './src/magic';
+import { extractAttachment, processBackup, processPatchFile, FLAGS } from './src/magic';
+import prettyBytes from 'pretty-bytes';
 
 function preventDefaults(e) {
   e.stopPropagation();
   e.preventDefault();
 }
 
-
 ['dragenter', 'dragover', 'dragleave', 'drop'].forEach((e) => {
   document.body.addEventListener(e, preventDefaults, false);
 });
 
 const flags = new Set();
+let patchURL = null;
+let patchData = null;
 let loadedBackup = null;
+let updatedAttachments = {};
 let note = document.querySelector('#patch-upload').innerHTML;
+let downloadNote = document.querySelector('#patch-download').innerHTML;
 
 function setupFlagPicker(selector) {
+  if (!Object.keys(FLAGS).length) {
+    return;
+  }
+
   const container = document.createElement('blockquote');
 
   const b = document.createElement('b');
@@ -102,19 +110,225 @@ function setupLogger(selector) {
   };
 }
 
+function updatePreview(result) {
+  const preview = document.querySelector('#course-preview');
+  preview.innerHTML = '';
+  let section = null;
+
+  for (const row of result.rows) {
+    if (row.id.startsWith('section_')) {
+      const title = document.createElement('b');
+      title.innerText = row.name;
+
+      section = document.createElement('ul');
+
+      preview.appendChild(title);
+      preview.appendChild(section);
+    } else {
+      const element = document.createElement('li');
+      element.innerText = `[${row.id}] ${row.name}`;
+      section.appendChild(element);
+
+      if (row.content) {
+        const content = document.createElement('blockquote');
+        content.style.paddingBlock = '0em';
+        content.style.fontSize = '80%';
+        content.innerHTML = row.content;
+        for (const e of content.querySelectorAll('img')) {
+          try {
+            const src = new URL(e.src).pathname.replace(location.pathname, '');
+            e.alt = `${e.alt || ''} (${src})`.trim();
+            e.src = `#${src}`;
+          } catch {
+            e.alt = `${e.alt || ''} (${e.src})`.trim();
+          }
+        }
+        element.appendChild(content);
+      }
+
+      if (row.files?.length) {
+        const list = document.createElement('ul');
+        list.style.marginBottom = '1em';
+        list.style.marginLeft = '-1.5em';
+        list.style.marginTop = '.5em';
+
+        for (const id of row.files) {
+          const file = result.attachments[id];
+
+          if (!Number(file.filesize)) {
+            continue;
+          }
+
+          const e = document.createElement('li');
+          e.style.fontFamily = 'monospace';
+          e.innerText = `🔗 `;
+
+          const source = document.createElement('span');
+          source.innerText = updatedAttachments[id]?.source || file.source || id;
+
+          const sourceEdit = document.createElement('a');
+          sourceEdit.href = '#';
+          sourceEdit.innerText = '✏️';
+          sourceEdit.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+
+            if (!updatedAttachments[id]) {
+              updatedAttachments[id] = {
+                author: file.author,
+                source: file.source,
+                timecreated: file.timecreated,
+                timemodified: file.timemodified,
+                contenthash: file.contenthash,
+                filesize: file.filesize,
+                mimetype: file.mimetype,
+                blob: null
+              };
+            }
+
+            updatedAttachments[id].source = window.prompt(
+              'Specify the source file name of the attachment:',
+              updatedAttachments[id]?.source || file.source
+            ) || file.source || updatedAttachments[id].source;
+            source.innerText = updatedAttachments[id].source || id;
+          });
+          e.appendChild(source);
+          e.appendChild(sourceEdit);
+
+          e.appendChild(document.createElement('br'));
+
+          const previewBtn = document.createElement('button');
+          previewBtn.style.paddingInline = '1em';
+          previewBtn.style.paddingBlock = '.5em';
+          previewBtn.style.marginTop = '.75em';
+          previewBtn.innerText = '👁️ preview';
+          previewBtn.addEventListener('click', async () => {
+            let blob;
+
+            if (updatedAttachments[id]?.blob) {
+              blob = new Blob([updatedAttachments[id].blob], { type: updatedAttachments[id].mimetype });
+            } else {
+              blob = await extractAttachment(result, file.contenthash, file.mimetype);
+            }
+
+            const fileURL = URL.createObjectURL(blob);
+            window.open(fileURL, '_blank');
+            URL.revokeObjectURL(fileURL);
+          });
+          e.appendChild(previewBtn);
+
+          const author = document.createElement('span');
+          author.innerText = `Author: ${updatedAttachments[id]?.author || file.author}`;
+
+          const size = document.createElement('span');
+          size.innerText = `Size: ${prettyBytes(Number(updatedAttachments[id]?.filesize || file.filesize))}`;
+
+          const created = document.createElement('span');
+          created.innerText = `Created: ${new Date(Number(updatedAttachments[id]?.timecreated || file.timecreated) * 1000).toLocaleString()}`;
+
+          const modified = document.createElement('span');
+          modified.innerText = `Modified: ${new Date(Number(updatedAttachments[id]?.timemodified || file.timemodified) * 1000).toLocaleString()}`;
+
+          const authorEdit = document.createElement('a');
+          authorEdit.href = '#';
+          authorEdit.innerText = '✏️';
+          authorEdit.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+
+            if (!updatedAttachments[id]) {
+              updatedAttachments[id] = {
+                author: file.author,
+                source: file.source,
+                timecreated: file.timecreated,
+                timemodified: file.timemodified,
+                contenthash: file.contenthash,
+                filesize: file.filesize,
+                mimetype: file.mimetype,
+                blob: null
+              };
+            }
+
+            updatedAttachments[id].author = window.prompt(
+              'Specify the name of the author:',
+              updatedAttachments[id]?.author || file.author
+            ) || file.author || updatedAttachments[id].author;
+            author.innerText = `Author: ${updatedAttachments[id].author}`;
+          });
+
+          const input = document.createElement('input');
+          input.style.display = 'none';
+          input.accept = file.mimetype;
+          input.type = 'file';
+          input.addEventListener('change', () => {
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+              updatedAttachments[id] = {
+                author: file.author,
+                source: input?.files[0].name,
+                timecreated: Math.round(input.files[0].lastModified / 1000),
+                timemodified: Math.round(input.files[0].lastModified / 1000),
+                contenthash: null,
+                filesize: input.files[0].size,
+                mimetype: input.files[0].type,
+                blob: evt.target.result
+              };
+
+              source.innerText = updatedAttachments[id].source || id;
+              size.innerText = `Size: ${prettyBytes(Number(updatedAttachments[id].filesize))}`;
+              created.innerText = `Created: ${new Date(Number(updatedAttachments[id].timecreated) * 1000).toLocaleString()}`;
+              modified.innerText = `Modified: ${new Date(Number(updatedAttachments[id].timemodified) * 1000).toLocaleString()}`;
+            };
+            reader.readAsArrayBuffer(input?.files[0]);
+          }, false);
+          e.appendChild(input);
+
+          const updateBtn = document.createElement('button');
+          updateBtn.style.paddingInline = '1em';
+          updateBtn.style.paddingBlock = '.5em';
+          updateBtn.style.marginTop = '.75em';
+          updateBtn.innerText = '✏️️ update';
+          updateBtn.addEventListener('click', () => input.click());
+          e.appendChild(updateBtn);
+
+          const s = document.createElement('small');
+          s.insertAdjacentText('afterbegin', '(');
+          s.appendChild(author);
+          s.appendChild(authorEdit);
+          s.insertAdjacentText('beforeend', ', ');
+          s.appendChild(size);
+          s.insertAdjacentText('beforeend', ', ');
+          s.appendChild(created);
+          s.insertAdjacentText('beforeend', ', ');
+          s.appendChild(modified);
+          s.insertAdjacentText('beforeend', ')');
+
+          e.appendChild(document.createElement('br'));
+          e.appendChild(s);
+
+          list.appendChild(e);
+        }
+        element.appendChild(list);
+      }
+    }
+  }
+}
+
 function setupPatchUpload() {
   document.querySelector('#patch-upload').innerHTML = '';
+  document.querySelector('#patch-download').innerHTML = '';
 
   if (!loadedBackup) {
     document.querySelector('#patch-upload').innerHTML = note;
+    document.querySelector('#patch-download').innerHTML = downloadNote;
     return;
   }
 
   setupFilePicker(
     '#patch-upload',
-    `Select your ${flags.has('--files') ? 'zip' : 'xlsx'} patch file using the file dialog or by dragging and dropping it onto the dashed region.`,
-    flags.has('--files') ? '.zip' : '.xlsx',
-    async (file, loader, form) => {
+    `Select your xlsx patch file using the file dialog or by dragging and dropping it onto the dashed region.`,
+    '.xlsx',
+    async (file, loader) => {
       const logger = setupLogger('#patch-log');
       const f = await new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -122,31 +336,65 @@ function setupPatchUpload() {
         reader.onload = (e) => resolve(e.target.result);
         reader.readAsArrayBuffer(file);
       });
-      const patchData = await processPatchFile(f, [...flags], logger);
+      patchData = await processPatchFile(f, [...flags], logger);
       if (!patchData) {
         alert('ERROR: patch file is invalid');
+        document.querySelector('#patch-download').innerHTML = downloadNote;
+      } else {
+        await generatePatchedBackup();
       }
-
-      const b = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onerror = (e) => reject(e);
-        reader.onload = (e) => resolve(e.target.result);
-        reader.readAsArrayBuffer(loadedBackup);
-      });
-
-      const result = await processBackup(b, loadedBackup.name, [...flags], patchData, logger);
-
-      const download = document.createElement('a');
-      download.innerText = '✅ Download Patched Course Backup';
-      download.download = result.name;
-      form.appendChild(download);
-
-      const blob = new Blob([result.file], { type: 'application/gzip' });	
-      download.href = URL.createObjectURL(blob);
 
       loader();
     }
   );
+}
+
+async function generatePatchedBackup() {
+  const logger = setupLogger('#patch-log');
+
+  try {
+    if (!document.querySelector('#patch-download .drop-area')) {
+      const form = document.createElement('div');
+      form.className = 'drop-area loading';
+
+      const button = document.createElement('button');
+      button.innerText = '🚀️ Generate Patched Backup File';
+      button.disabled = true;
+      button.addEventListener('click', () => {
+        button.disabled = true;
+        form.classList.add('loading');
+        form.querySelector('#patch-download a')?.remove?.();
+        setTimeout(() => generatePatchedBackup(), 50);
+      }, false);
+
+      form.appendChild(button);
+      form.appendChild(document.createElement('br'));
+      form.appendChild(document.createElement('br'));
+
+      document.querySelector('#patch-download').appendChild(form);
+    }
+
+    const result = await processBackup(loadedBackup.blob, loadedBackup.name, patchData, updatedAttachments, [...flags], logger);
+    updatePreview(result);
+
+    const download = document.createElement('a');
+    download.innerText = '✅ Download Patched Course Backup';
+    download.download = result.name;
+    document.querySelector('#patch-download .drop-area').appendChild(download);
+
+    if (patchURL) {
+      URL.revokeObjectURL(patchURL);
+    }
+
+    const blob = new Blob([result.file], { type: 'application/gzip' });	
+    patchURL = URL.createObjectURL(blob);
+    download.href = patchURL;
+  } catch (e) {
+    logger(e);
+  } finally {
+    document.querySelector('#patch-download .drop-area').classList.remove('loading');
+    document.querySelector('#patch-download .drop-area button').disabled = false;
+  }
 }
 
 setupFilePicker(
@@ -155,25 +403,36 @@ setupFilePicker(
   '.mbz',
   async (backupFile, loader, form) => {
     const logger = setupLogger('#backup-log');
-    const b = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onerror = (e) => reject(e);
-      reader.onload = (e) => resolve(e.target.result);
-      reader.readAsArrayBuffer(backupFile);
-    });
-    const result = await processBackup(b, backupFile.name, [...flags], false, logger);
-    loadedBackup = backupFile;
+    try {
+      const b = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = (e) => reject(e);
+        reader.onload = (e) => resolve(e.target.result);
+        reader.readAsArrayBuffer(backupFile);
+      });
+      const result = await processBackup(b, backupFile.name, false, {}, [...flags], logger);
+      updatedAttachments = {};
+      loadedBackup = {
+        blob: b,
+        name: backupFile.name
+      };
+      updatePreview(result);
 
-    const download = document.createElement('a');
-    download.innerText = '✅ Download Course Spreadsheet';
-    download.download = result.name;
-    form.appendChild(download);
+      form.querySelector('a')?.remove?.();
 
-    const blob = new Blob([result.file], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });	
-    download.href = URL.createObjectURL(blob);
+      const download = document.createElement('a');
+      download.innerText = '✅ Download Course Spreadsheet';
+      download.download = result.name;
+      form.appendChild(download);
 
-    setupPatchUpload();
-    loader();
+      const blob = new Blob([result.file], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });	
+      download.href = URL.createObjectURL(blob);
+    } catch (e) {
+      logger(e);
+      loadedBackup = null;
+    } finally {
+      setupPatchUpload();
+      loader();
+    }
   }
 );
-

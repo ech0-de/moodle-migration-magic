@@ -1,11 +1,12 @@
 import pako from 'pako';
+import JSZip from 'jszip';
 import * as XLSX from 'xlsx';
 import * as tarjs from '@gera2ld/tarjs';
 import xmldom from '@xmldom/xmldom';
-import AdmZip from 'adm-zip';
 
 const { TarFileType, TarReader, TarWriter } = tarjs?.default?.tarball || tarjs;
 const { DOMParser, XMLSerializer } = xmldom;
+const { subtle } = globalThis.crypto;
 
 if (TarFileType?.[0]) {
   // todo workaround until https://github.com/gera2ld/tarjs/pull/1 is merged
@@ -21,6 +22,7 @@ let logger = console.log;
 let patchedFiles = new Map();
 let parser = new DOMParser();
 let serializer = new XMLSerializer();
+let files = {};
 let backup = null;
 let backupActivities = {};
 
@@ -156,29 +158,21 @@ function patchAvailability(activity, module, file, patchData, row, field='availa
   }
 }
 
-const contents = {};
-const patchContents = {};
+function extractAndPatchContent(row, doc, patchData, activity, file) {
+  const intro = read(doc, 'intro').replace(/\r?\n/g, '\n');
+  const patchedIntro = String(patchData?.get?.(row.id)?.content).replace(/\r?\n/g, '\n');
 
-function extractAndPatchContent(number, index, name, doc, patchData, activity, file) {
-  const type = doc.getElementsByTagName('activity')?.[0]?.getAttribute('modulename');
-  const intro = read(doc, 'intro');
-  const introformat = read(doc, 'introformat');
-
-  const suffix = introformat === '1' ? 'html' : 'txt';
-
-  const path = `sections/${String(number + 1).padStart(2, '0')}/${String(index + 1).padStart(3, '0')}_${name.toLowerCase().replace(/[^a-z0-9_\-]/g, '-').slice(0, 20).replace(/--+/, '-').replace(/-$/, '')}.${type}.${suffix}`;
-  contents[path] = intro;
-
-  if (patchData && patchContents[path] !== contents[path]) {
+  if (patchData && patchedIntro !== intro) {
     const e = doc.getElementsByTagName('intro')[0].childNodes[0];
-    e.replaceData(0, e.nodeValue.length, patchContents[path]);
-    logger(`patching ${activity.path}${file} intro\n  - ${JSON.stringify(contents[path])}\n  + ${JSON.stringify(patchContents[path])}\n`);
+    e.replaceData(0, e.nodeValue.length, patchedIntro);
+    logger(`patching ${activity.path}${file} intro\n  - ${JSON.stringify(intro)}\n  + ${JSON.stringify(patchedIntro)}\n`);
     patchedFiles.set(`${activity.path}${file}`, doc);
   }
+
+  return intro;
 }
 
 export const FLAGS = {
-  '--files': 'produce and consume a zip patch file that also contains editable activity contents (EXPERIMENTAL)'
 };
 
 export const COLUMNS = [
@@ -193,26 +187,6 @@ export const COLUMNS = [
 export async function processPatchFile(file, flags = [], log = console.log) {
   logger = log;
   try {
-    if (flags.includes('--files')) {
-      let xlsxFound = false;
-      const zip = new AdmZip(file);
-
-      for (const entry of zip.getEntries()) {
-        if (entry.entryName.indexOf('/') < 0 && entry.entryName.endsWith('.xlsx') && !entry.entryName.startsWith('~')) {
-          // continue normal patching with extracted xlsx
-          file = entry.getData();
-          xlsxFound = true;
-        } else {
-          patchContents[entry.entryName] = entry.getData().toString('utf-8');
-        }
-      }
-
-      if (!xlsxFound) {
-        logger('ERROR: zip patch file does not contain .xlsx patch in root directory');
-        process.exit(1);
-      }
-    }
-
     const patchData = new Map();
     const workbook = XLSX.read(file, {
       cellDates: true,
@@ -244,7 +218,7 @@ export async function processPatchFile(file, flags = [], log = console.log) {
   }
 }
 
-export async function processBackup(file, filename, flags = [], patchData = false, log = console.log) {
+export async function processBackup(file, filename, patchData = false, updatedAttachments = {}, flags = [], log = console.log) {
   logger = log;
   try {
     patchedFiles = new Map();
@@ -285,6 +259,25 @@ export async function processBackup(file, filename, flags = [], patchData = fals
           backupActivities = {};
           backup = null;
         }
+      } else if (e.name === 'files.xml') {
+        try {
+          const contents = reader.getTextFile(e.name);
+          const doc = parser.parseFromString(contents, 'application/xml');
+          for (const e of doc.getElementsByTagName('file')) {
+            files[e.getAttribute('id')] = {
+              itemid: e.getElementsByTagName('itemid')?.[0]?.childNodes[0]?.nodeValue,
+              contenthash: e.getElementsByTagName('contenthash')?.[0]?.childNodes[0]?.nodeValue,
+              timecreated: e.getElementsByTagName('timecreated')?.[0]?.childNodes[0]?.nodeValue,
+              timemodified: e.getElementsByTagName('timemodified')?.[0]?.childNodes[0]?.nodeValue,
+              filesize: e.getElementsByTagName('filesize')?.[0]?.childNodes[0]?.nodeValue,
+              mimetype: e.getElementsByTagName('mimetype')?.[0]?.childNodes[0]?.nodeValue,
+              source: e.getElementsByTagName('source')?.[0]?.childNodes[0]?.nodeValue,
+              author: e.getElementsByTagName('author')?.[0]?.childNodes[0]?.nodeValue,
+            };
+          }
+        } catch (e) {
+          logger('WARN', 'could not parse files.xml', e.message);
+        }
       }
     }
 
@@ -318,7 +311,6 @@ export async function processBackup(file, filename, flags = [], patchData = fals
       const section = sections.get(`section_${read(module, 'sectionid')}`);
       const offset = section.number;
       const number = section.sequence.indexOf(module.documentElement.getAttribute('id'));
-      const index = Number(read(module, 'sectionnumber'));
 
       const row = {
         id: id,
@@ -342,17 +334,12 @@ export async function processBackup(file, filename, flags = [], patchData = fals
       if (activity.files['label.xml']) {
         const doc = parser.parseFromString(activity.files['label.xml'].toString(), 'application/xml');
         row.name = read(doc, 'name');
-
-        if (flags.includes('--files')) {
-          extractAndPatchContent(number, index, row.name, doc, patchData, activity, 'label.xml');
-        }
+        row.content = extractAndPatchContent(row, doc, patchData, activity, 'label.xml');
       } else if (activity.files['assign.xml']) {
         const doc = parser.parseFromString(activity.files['assign.xml'].toString(), 'application/xml');
         row.name = read(doc, 'name');
 
-        if (flags.includes('--files')) {
-          extractAndPatchContent(number, index, row.name, doc, patchData, activity, 'assign.xml');
-        }
+        row.content = extractAndPatchContent(row, doc, patchData, activity, 'assign.xml');
         row.allowsubmissionsfromdate = new Date(parseInt(read(doc, 'allowsubmissionsfromdate'), 10) * 1000);
         row.duedate = new Date(parseInt(read(doc, 'duedate'), 10) * 1000);
         row.cutoffdate = new Date(parseInt(read(doc, 'cutoffdate'), 10) * 1000);
@@ -384,12 +371,22 @@ export async function processBackup(file, filename, flags = [], patchData = fals
           patch(activity, type, 'name', patchData.get(row.id)?.name);
         }
       }
+
+      try {
+        const doc = parser.parseFromString(activity.files['inforef.xml'].toString(), 'application/xml');
+        row.files = [...doc.getElementsByTagName('file')].map(e => read(e, 'id'));
+      } catch (e) {
+        logger('WARN', 'could not parse activities\' inforef.xml', e.message);
+      }
+
       rows.push(row);
     }
 
+    rows.sort((a, b) => a.number - b.number);
+
     if (!patchData) {
       // read mode
-      rows.sort((a, b) => a.number - b.number).forEach(e => {
+      rows.forEach((e) => {
         delete e.number;
       });
 
@@ -406,50 +403,141 @@ export async function processBackup(file, filename, flags = [], patchData = fals
           'allowsubmissionsfromdate',
           'duedate',
           'cutoffdate',
+          'content',
         ]
       });
-      worksheet['!cols'] = [20, 80, 20, 20, 20, 20, 20, 20].map(e => ({ wch: e }));
+      worksheet['!cols'] = [20, 80, 20, 20, 20, 20, 20, 20, 80].map(e => ({ wch: e }));
       const name = `${filename.replace(/\.[^.]*$/, '')}.xlsx`;
       XLSX.utils.book_append_sheet(workbook, worksheet, 'moodle-data');
       const res = XLSX.write(workbook, { type: 'array'});
+
+      const tmp = await JSZip.loadAsync(res);
+      const styles = parser.parseFromString(await tmp.file('xl/styles.xml').async('string'), 'application/xml');
+      const fonts = styles.getElementsByTagName('fonts')[0];
+      const boldFont = fonts.childNodes[0].cloneNode(true);
+      boldFont.appendChild(styles.createElement('b'));
+      fonts.appendChild(boldFont);
+      const boldFontId = fonts.childNodes.length - 1;
+
+      const monoFont = styles.createElement('font');
+      monoFont.appendChild(styles.createElement('sz'));
+      monoFont.appendChild(styles.createElement('color'));
+      monoFont.appendChild(styles.createElement('name'));
+      monoFont.appendChild(styles.createElement('family'));
+      monoFont.getElementsByTagName('sz')[0].setAttribute('val', '11');
+      monoFont.getElementsByTagName('color')[0].setAttribute('val', '1');
+      monoFont.getElementsByTagName('name')[0].setAttribute('val', 'Courier New');
+      monoFont.getElementsByTagName('family')[0].setAttribute('val', '3');
+      fonts.appendChild(monoFont);
+      const monoFontId = fonts.childNodes.length - 1;
+
+      fonts.setAttribute('count', fonts.childNodes.length);
+      
+      const cellXfs = styles.getElementsByTagName('cellXfs')[0];
+
+      const bold = styles.createElement('xf');
+      bold.setAttribute('numFmtId', '0');
+      bold.setAttribute('fontId', boldFontId);
+      bold.setAttribute('fillId', '0');
+      bold.setAttribute('borderId', '0');
+      bold.setAttribute('xfId', '0');
+      bold.setAttribute('applyNumberFormat', '1');
+      cellXfs.appendChild(bold);
+      const boldStyleId = cellXfs.childNodes.length - 1;
+
+      const wrapped = styles.createElement('xf');
+      wrapped.setAttribute('numFmtId', '0');
+      wrapped.setAttribute('fontId', monoFontId);
+      wrapped.setAttribute('fillId', '0');
+      wrapped.setAttribute('borderId', '0');
+      wrapped.setAttribute('xfId', '0');
+      wrapped.setAttribute('applyNumberFormat', '1');
+      wrapped.setAttribute('applyAlignment', '1');
+      const alignment = styles.createElement('alignment');
+      alignment.setAttribute('wrapText', '1');
+      wrapped.appendChild(alignment);
+      cellXfs.appendChild(wrapped);
+      const wrappedStyleId = cellXfs.childNodes.length - 1;
+
+      cellXfs.setAttribute('count', cellXfs.childNodes.length);
+      tmp.file('xl/styles.xml', serializer.serializeToString(styles));
+
+      const sheet = parser.parseFromString(await tmp.file('xl/worksheets/sheet1.xml').async('string'), 'application/xml');
+      for (const row of sheet.getElementsByTagName('row')) {
+          for (const col of row.childNodes) {
+              if (row.getAttribute('r') === '1') {
+                  col.setAttribute('s', boldStyleId);
+              } else if (col.getAttribute('r').startsWith('I')) {
+                  col.setAttribute('s', wrappedStyleId);
+              }
+          }
+      }
+      tmp.file('xl/worksheets/sheet1.xml', serializer.serializeToString(sheet));
+
       logger(`writing data to ${name}`);
 
-      if (!flags.includes('--files')) {
-        return {
-          name: name,
-          file: res
-        };
-      }
-
-      const archive = name.replace(/xlsx$/, 'zip');
-
-      logger(`creating archive ${archive}`);
-      const zip = new AdmZip();
-      zip.addFile(name, Buffer.from(res));
-      for (const [p, f] of Object.entries(contents)) {
-        zip.addFile(p, f);
-      }
-
       return {
-        name: archive,
-        file: zip.toBuffer()
+        name: name,
+        file: await tmp.generateAsync({ type: 'uint8array' }),
+        reader: reader,
+        attachments: files,
+        rows: rows
       };
     } else {
       logger();
       logger('writing patched archive...');
       const patchedArchive = `${filename.replace(/\.[^.]*$/, '.patched')}.mbz`;
 
+      const rewriteFiles = Object.values(updatedAttachments).length > 0;
+
       const writer = new TarWriter();
-      const mtime = Date.now();
+      const mtime = Math.round(Date.now() / 1000);
+
+      for (const file of Object.values(updatedAttachments)) {
+        if (file.blob) {
+          const digest = await subtle.digest('SHA-1', file.blob);
+          const hashArray = Array.from(new Uint8Array(digest));
+          file.contenthash = hashArray
+            .map((b) => b.toString(16).padStart(2, '0'))
+            .join('');
+        }
+      }
 
       for (const entry of items) {
         if (entry.name.endsWith('/')) {
           writer.addFolder(entry.name, { mtime, mode: 0o755 });
+        } else if (entry.name === 'files.xml' && rewriteFiles) {
+          try {
+            const contents = reader.getTextFile(entry.name);
+            const doc = parser.parseFromString(contents, 'application/xml');
+            for (const e of doc.getElementsByTagName('file')) {
+              if (updatedAttachments[e.getAttribute('id')]) {
+                for (const attribute of ['contenthash', 'timecreated', 'timemodified', 'filesize', 'mimetype', 'source', 'author']) {
+                  const node = e.getElementsByTagName(attribute)?.[0]?.childNodes[0];
+                  const newValue = String(updatedAttachments[e.getAttribute('id')][attribute]);
+                  const oldValue = node?.nodeValue;
+
+                  if (node && newValue && oldValue !== newValue) {
+                    node.replaceData(0, node.nodeValue.length, newValue);
+                    logger(`patching files.xml ${e.getAttribute('id')}:${attribute}\n  - ${JSON.stringify(oldValue)}\n  + ${JSON.stringify(newValue)}\n`);
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            logger('WARN', 'could not parse files.xml', e.message);
+          }
         } else if (patchedFiles.has(entry.name)) {
           const content = serializer.serializeToString(patchedFiles.get(entry.name));
           writer.addFile(entry.name, content, { mtime, mode: 0o644 });
         } else {
           writer.addFile(entry.name, reader.getFileBlob(entry.name), { mtime, mode: 0o644 });
+        }
+      }
+
+      for (const file of Object.values(updatedAttachments)) {
+        if (file.blob) {
+          writer.addFile(`${file.contenthash.slice(0, 2)}/${file.contenthash}`, file.blob, { mtime, mode: 0o644 });
         }
       }
 
@@ -460,9 +548,22 @@ export async function processBackup(file, filename, flags = [], patchData = fals
 
       return {
         name: patchedArchive,
-        file: compressedBackup
+        file: compressedBackup,
+        reader: reader,
+        attachments: files,
+        rows: rows
       };
     }
+  } catch (e) {
+    console.log(e);
+    logger('ERROR', e.message, e);
+  }
+}
+
+export async function extractAttachment(backup, id, mimetype, flags = [], log = console.log) {
+  logger = log;
+  try {
+    return backup.reader.getFileBlob(`files/${id.slice(0, 2)}/${id}`, mimetype);
   } catch (e) {
     logger('ERROR', e.message, e);
   }

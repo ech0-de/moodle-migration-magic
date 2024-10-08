@@ -40,8 +40,10 @@
       <li><a href="#step2">Step 2: Create Spreadsheet Representation</a></li>
       <li><a href="#step3">Step 3: Alter Patch File</a></li>
       <li><a href="#step4">Step 4: Apply Patch</a></li>
-      <li><a href="#step5">Step 5: Import Patched Backup into Moodle</a></li>
-      <li><a href="#step6">Step 6: Enjoy Your Newly Provisioned Moodle Course</a></li>
+      <li><a href="#step5">Step 5: Course Preview</a></li>
+      <li><a href="#step6">Step 6: Generate Patched Backup</a></li>
+      <li><a href="#step7">Step 7: Import Patched Backup into Moodle</a></li>
+      <li><a href="#step8">Step 8: Enjoy Your Newly Provisioned Moodle Course</a></li>
     </ul>
 
     <h2 id="step1">Step 1: Create a Suitable Course Backup</h2>
@@ -111,7 +113,7 @@
             <th><code>name</code></th>
             <td>✅</td>
             <td>✅</td>
-            <td>⚠⁵</td>
+            <td>⚠⁴</td>
             <td>✅</td>
             <td>✅</td>
           </tr>
@@ -165,9 +167,9 @@
           </tr>
           <tr>
             <th><code>intro</code></th>
-            <td>✅⁴</td>
+            <td>✅</td>
             <td>❌</td>
-            <td>✅⁴</td>
+            <td>✅</td>
             <td>❌</td>
             <td>❌</td>
           </tr>
@@ -188,23 +190,35 @@
 
       <small>
         <ul class="no-bullets">
-          <li>¹ setting availability may overwrite with existing availability rules other than time-based</li>
+          <li>¹ setting availability may overwrite existing availability rules other than time-based</li>
           <li>² <code>allowsubmissionsfromdate</code> is internally mapped to moodle's <code>timeopen</code></li>
           <li>³ <code>duedate</code> is internally mapped to moodle's <code>timeclose</code></li>
-          <li>⁴ only when zip patch file (<code>--files</code>) is enabled</li>
-          <li>⁵ <code>name</code> of a label is a shortened readonly version of <code>intro</code>, therefore you might want to edit <code>intro</code> instead <a href="https://github.com/ech0-de/moodle-migration-magic/issues/1" target="_blank" rel="noopener noreferrer">[#1]</a>
+          <li>⁴ <code>name</code> of a label is a shortened readonly version of <code>intro</code>, therefore you might want to edit <code>intro</code> instead <a href="https://github.com/ech0-de/moodle-migration-magic/issues/1" target="_blank" rel="noopener noreferrer">[#1]</a>
         </ul>
       </small>
     </p>
 
     <h2 id="step4">Step 4: Apply Patch</h2>
     <div id="patch-upload">
-      <blockquote>⚠ You first have to select your Moodle backup file in step 2.</blockquote>
+      <blockquote>⚠ You first have to select your Moodle backup file in <a href="#step2">step 2</a>.</blockquote>
+    </div>
+
+    <h2 id="step5">Step 5: Course Preview</h2>
+    <p>
+      The following overview gives you a rough preview of the patched course.
+      You can optionally also modify files and corresponding metadata that are attached to activities of your course here.
+    </p>
+
+    <blockquote id="course-preview"></blockquote>
+
+    <h2 id="step6">Step 6: Generate Patched Backup</h2>
+    <div id="patch-download">
+      <blockquote>⚠ You first have to select your patch file in <a href="#step4">step 4</a>.</blockquote>
     </div>
     <h4>Log Output</h4>
     <pre><code id="patch-log"></code></pre>
 
-    <h2 id="step5">Step 5: Import Patched Backup into Moodle</h2>
+    <h2 id="step7">Step 7: Import Patched Backup into Moodle</h2>
     <p>
       Now navigate to your new course where you want to import the patched backup and navigate to "Course Reuse" within the course administration menu.
 
@@ -234,8 +248,9 @@
       The later might otherwise result in data loss, depending on your user's privileges.
     </p>
 
-    <h2 id="step6">Step 6: Enjoy Your Newly Provisioned Moodle Course</h2>
+    <h2 id="step8">Step 8: Enjoy Your Newly Provisioned Moodle Course!</h2>
     <p class="center">
+      <span class="flag">🏳️‍🌈</span>
       <span class="large">😎</span>
     </p>
 

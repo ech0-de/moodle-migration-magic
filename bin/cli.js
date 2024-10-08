@@ -61,7 +61,7 @@ if (args.length === 2) {
 }
 
 const backupFile = await readFile(args[0]);
-const result = await processBackup(backupFile, basename(args[0]), flags, patchData);
+const result = await processBackup(backupFile, basename(args[0]), patchData, {}, flags);
 
 try {
   const s = await stat(result.name);

@@ -14,7 +14,7 @@
   ],
   "author": "ech0 <mail@ech0.de>",
   "license": "MIT",
-  "version": "2.1.6",
+  "version": "2.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -27,9 +27,10 @@
   },
   "dependencies": {
     "@gera2ld/tarjs": "^0.2.2",
-    "@xmldom/xmldom": "^0.8.10",
-    "adm-zip": "^0.5.10",
+    "@xmldom/xmldom": "^0.9.3",
+    "jszip": "^3.10.1",
     "pako": "^2.1.0",
+    "pretty-bytes": "^6.1.1",
     "water.css": "^2.1.1",
     "xlsx": "^0.18.5"
   }

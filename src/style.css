@@ -76,3 +76,11 @@ footer {
   justify-content: center;
   gap: 2em;
 }
+.flag {
+  position: absolute;
+  font-size: 250%;
+  margin-left: -.5em;
+  margin-top: -.25em;
+  rotate: -10deg;
+  opacity: .7;
+}
