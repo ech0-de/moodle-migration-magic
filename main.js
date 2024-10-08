@@ -116,9 +116,10 @@ function updatePreview(result) {
   let section = null;
 
   for (const row of result.rows) {
+    const patched = patchData ? patchData.get(row.id) : null;
     if (row.id.startsWith('section_')) {
       const title = document.createElement('b');
-      title.innerText = row.name;
+      title.innerText = patched?.name || row.name;
 
       section = document.createElement('ul');
 
@@ -126,14 +127,14 @@ function updatePreview(result) {
       preview.appendChild(section);
     } else {
       const element = document.createElement('li');
-      element.innerText = `[${row.id}] ${row.name}`;
+      element.innerText = `[${row.id}] ${patched?.name || row.name}`;
       section.appendChild(element);
 
       if (row.content) {
         const content = document.createElement('blockquote');
         content.style.paddingBlock = '0em';
         content.style.fontSize = '80%';
-        content.innerHTML = row.content;
+        content.innerHTML = patched?.content || row.content;
         for (const e of content.querySelectorAll('img')) {
           try {
             const src = new URL(e.src).pathname.replace(location.pathname, '');
