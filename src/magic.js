@@ -162,7 +162,7 @@ function extractAndPatchContent(row, doc, patchData, activity, file) {
   const intro = read(doc, 'intro').replace(/\r?\n/g, '\n');
   const patchedIntro = String(patchData?.get?.(row.id)?.content).replace(/\r?\n/g, '\n');
 
-  if (patchData && patchedIntro !== intro) {
+  if (patchData && patchData.get(row.id)?.content && patchedIntro !== intro) {
     const e = doc.getElementsByTagName('intro')[0].childNodes[0];
     e.replaceData(0, e.nodeValue.length, patchedIntro);
     logger(`patching ${activity.path}${file} intro\n  - ${JSON.stringify(intro)}\n  + ${JSON.stringify(patchedIntro)}\n`);
