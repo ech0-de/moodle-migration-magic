@@ -352,13 +352,13 @@ function updatePreview(result) {
               const reader = new FileReader();
               reader.onload = (evt) => {
                 updatedAttachments[id] = {
-                  author: file.author,
+                  author: updatedAttachments[id]?.author ?? file.author,
                   source: input?.files[0].name,
                   timecreated: Math.round(input.files[0].lastModified / 1000),
                   timemodified: Math.round(input.files[0].lastModified / 1000),
                   contenthash: null,
                   filesize: input.files[0].size,
-                  filepath: null,
+                  filepath: updatedAttachments[id]?.filepath ?? file.filepath,
                   mimetype: input.files[0].type,
                   blob: evt.target.result
                 };

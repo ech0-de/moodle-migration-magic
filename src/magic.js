@@ -525,6 +525,9 @@ export async function processBackup(file, filename, patchData = false, updatedAt
                 }
               }
             }
+
+            const content = serializer.serializeToString(doc);
+            writer.addFile(entry.name, content, { mtime, mode: 0o644 });
           } catch (e) {
             logger('WARN', 'could not parse files.xml', e.message);
           }
