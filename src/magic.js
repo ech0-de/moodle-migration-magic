@@ -266,6 +266,7 @@ export async function processBackup(file, filename, patchData = false, updatedAt
           for (const e of doc.getElementsByTagName('file')) {
             files[e.getAttribute('id')] = {
               itemid: e.getElementsByTagName('itemid')?.[0]?.childNodes[0]?.nodeValue,
+              filepath: e.getElementsByTagName('filepath')?.[0]?.childNodes[0]?.nodeValue,
               contenthash: e.getElementsByTagName('contenthash')?.[0]?.childNodes[0]?.nodeValue,
               timecreated: e.getElementsByTagName('timecreated')?.[0]?.childNodes[0]?.nodeValue,
               timemodified: e.getElementsByTagName('timemodified')?.[0]?.childNodes[0]?.nodeValue,
@@ -512,7 +513,7 @@ export async function processBackup(file, filename, patchData = false, updatedAt
             const doc = parser.parseFromString(contents, 'application/xml');
             for (const e of doc.getElementsByTagName('file')) {
               if (updatedAttachments[e.getAttribute('id')]) {
-                for (const attribute of ['contenthash', 'timecreated', 'timemodified', 'filesize', 'mimetype', 'source', 'author']) {
+                for (const attribute of ['contenthash', 'timecreated', 'timemodified', 'filesize', 'filepath', 'mimetype', 'source', 'author']) {
                   const node = e.getElementsByTagName(attribute)?.[0]?.childNodes[0];
                   const newValue = String(updatedAttachments[e.getAttribute('id')][attribute]);
                   const oldValue = node?.nodeValue;

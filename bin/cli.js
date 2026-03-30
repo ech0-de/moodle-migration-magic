@@ -17,7 +17,7 @@ if (args.length !== 1 && args.length !== 2 || flags.includes('-h') || flags.incl
       ...FLAGS
   };
 
-  const padding = Math.max(...Object.keys(FLAGS).map(e => e.length));
+  const padding = Object.keys(FLAGS).length ? Math.max(...Object.keys(FLAGS).map(e => e.length)) : 0;
   const spaces = Array(padding + 3).fill(' ').join('');
 
   for (const flag of Object.keys(flags)) {

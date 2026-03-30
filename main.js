@@ -153,162 +153,252 @@ function updatePreview(result) {
         list.style.marginLeft = '-1.5em';
         list.style.marginTop = '.5em';
 
-        for (const id of row.files) {
-          const file = result.attachments[id];
 
-          if (!Number(file.filesize)) {
-            continue;
+        const filesTree = row.files.map(e => [e, result.attachments[e]])
+          .sort((a, b) => {
+            const l = a[1].filepath.replace(/[^\/]/g, '').length;
+            const r = b[1].filepath.replace(/[^\/]/g, '').length;
+
+            if (l === r) {
+              const tmp = a[1].filepath.localeCompare(b[1].filepath);
+              if (!tmp) {
+                return a[1].source.localeCompare(b[1].source);
+              } else {
+                return tmp;
+              }
+            } else {
+              return l - r;
+            }
+          })
+          .reduce((a, [k, v]) => {
+            if (!a[v.filepath]) {
+              a[v.filepath] = [];
+            }
+            a[v.filepath].push(k);
+            return a;
+          }, {});
+
+        for (const [path, files] of Object.entries(filesTree)) {
+          const segments = (updatedAttachments?.[files[0]]?.filepath ?? path)
+            .replace(/\/$/, '')
+            .split('/');
+
+          const d = document.createElement('li');
+          d.style.fontFamily = 'monospace';
+          d.innerText = `📁 ${segments.slice(0, -1).join('/')}/`;
+          list.appendChild(d);
+
+          if (segments.at(-1)) {
+            const dirname = document.createElement('span');
+            dirname.style.fontFamily = 'monospace';
+            dirname.innerText = segments.at(-1);
+            d.appendChild(dirname);
+
+            const dirEdit = document.createElement('a');
+            dirEdit.href = '#';
+            dirEdit.innerText = '✏️';
+            dirEdit.style.marginLeft = '4px';
+            dirEdit.addEventListener('click', (e) => {
+              e.stopPropagation();
+              e.preventDefault();
+
+              const newDirname = String(window.prompt(
+                'Specify the desired directory name:',
+                segments.at(-1)
+              ) || segments.at(-1)).replaceAll('/', '');
+
+              dirname.innerText = newDirname;
+              const newPath = [...segments.slice(0, -1), newDirname, ''].join('/');
+              const childItems = Object.entries(filesTree)
+                .flatMap(([p, f]) => p.startsWith(path) ? f : []);
+
+              for (const id of childItems) {
+                if (!updatedAttachments[id]) {
+                  const file = result.attachments[id];
+                  updatedAttachments[id] = {
+                    author: file.author,
+                    source: file.source,
+                    timecreated: file.timecreated,
+                    timemodified: file.timemodified,
+                    contenthash: file.contenthash,
+                    filesize: file.filesize,
+                    filepath: file.filepath,
+                    mimetype: file.mimetype,
+                    blob: null
+                  };
+                }
+
+                updatedAttachments[id].filepath = newPath;
+              }
+            });
+            d.appendChild(dirEdit);
           }
 
-          const e = document.createElement('li');
-          e.style.fontFamily = 'monospace';
-          e.innerText = `🔗 `;
+          const dir = document.createElement('ul');
+          d.appendChild(dir);
 
-          const source = document.createElement('span');
-          source.innerText = updatedAttachments[id]?.source || file.source || id;
+          for (const id of files) {
+            const file = result.attachments[id];
 
-          const sourceEdit = document.createElement('a');
-          sourceEdit.href = '#';
-          sourceEdit.innerText = '✏️';
-          sourceEdit.addEventListener('click', (e) => {
-            e.stopPropagation();
-            e.preventDefault();
-
-            if (!updatedAttachments[id]) {
-              updatedAttachments[id] = {
-                author: file.author,
-                source: file.source,
-                timecreated: file.timecreated,
-                timemodified: file.timemodified,
-                contenthash: file.contenthash,
-                filesize: file.filesize,
-                mimetype: file.mimetype,
-                blob: null
-              };
+            if (!Number(file.filesize)) {
+              continue;
             }
 
-            updatedAttachments[id].source = window.prompt(
-              'Specify the source file name of the attachment:',
-              updatedAttachments[id]?.source || file.source
-            ) || file.source || updatedAttachments[id].source;
-            source.innerText = updatedAttachments[id].source || id;
-          });
-          e.appendChild(source);
-          e.appendChild(sourceEdit);
+            const e = document.createElement('li');
+            e.style.fontFamily = 'monospace';
+            e.innerText = `🔗 `;
 
-          e.appendChild(document.createElement('br'));
+            const source = document.createElement('span');
+            source.innerText = (updatedAttachments[id]?.source || file.source || id);
 
-          const previewBtn = document.createElement('button');
-          previewBtn.style.paddingInline = '1em';
-          previewBtn.style.paddingBlock = '.5em';
-          previewBtn.style.marginTop = '.75em';
-          previewBtn.innerText = '👁️ preview';
-          previewBtn.addEventListener('click', async () => {
-            let blob;
+            const sourceEdit = document.createElement('a');
+            sourceEdit.href = '#';
+            sourceEdit.innerText = '✏️';
+            sourceEdit.style.marginLeft = '4px';
+            sourceEdit.addEventListener('click', (e) => {
+              e.stopPropagation();
+              e.preventDefault();
 
-            if (updatedAttachments[id]?.blob) {
-              blob = new Blob([updatedAttachments[id].blob], { type: updatedAttachments[id].mimetype });
-            } else {
-              blob = await extractAttachment(result, file.contenthash, file.mimetype);
-            }
+              if (!updatedAttachments[id]) {
+                updatedAttachments[id] = {
+                  author: file.author,
+                  source: file.source,
+                  timecreated: file.timecreated,
+                  timemodified: file.timemodified,
+                  contenthash: file.contenthash,
+                  filesize: file.filesize,
+                  filepath: file.filepath,
+                  mimetype: file.mimetype,
+                  blob: null
+                };
+              }
 
-            const fileURL = URL.createObjectURL(blob);
-            window.open(fileURL, '_blank');
-            URL.revokeObjectURL(fileURL);
-          });
-          e.appendChild(previewBtn);
-
-          const author = document.createElement('span');
-          author.innerText = `Author: ${updatedAttachments[id]?.author || file.author}`;
-
-          const size = document.createElement('span');
-          size.innerText = `Size: ${prettyBytes(Number(updatedAttachments[id]?.filesize || file.filesize))}`;
-
-          const created = document.createElement('span');
-          created.innerText = `Created: ${new Date(Number(updatedAttachments[id]?.timecreated || file.timecreated) * 1000).toLocaleString()}`;
-
-          const modified = document.createElement('span');
-          modified.innerText = `Modified: ${new Date(Number(updatedAttachments[id]?.timemodified || file.timemodified) * 1000).toLocaleString()}`;
-
-          const authorEdit = document.createElement('a');
-          authorEdit.href = '#';
-          authorEdit.innerText = '✏️';
-          authorEdit.addEventListener('click', (e) => {
-            e.stopPropagation();
-            e.preventDefault();
-
-            if (!updatedAttachments[id]) {
-              updatedAttachments[id] = {
-                author: file.author,
-                source: file.source,
-                timecreated: file.timecreated,
-                timemodified: file.timemodified,
-                contenthash: file.contenthash,
-                filesize: file.filesize,
-                mimetype: file.mimetype,
-                blob: null
-              };
-            }
-
-            updatedAttachments[id].author = window.prompt(
-              'Specify the name of the author:',
-              updatedAttachments[id]?.author || file.author
-            ) || file.author || updatedAttachments[id].author;
-            author.innerText = `Author: ${updatedAttachments[id].author}`;
-          });
-
-          const input = document.createElement('input');
-          input.style.display = 'none';
-          input.accept = file.mimetype;
-          input.type = 'file';
-          input.addEventListener('change', () => {
-            const reader = new FileReader();
-            reader.onload = (evt) => {
-              updatedAttachments[id] = {
-                author: file.author,
-                source: input?.files[0].name,
-                timecreated: Math.round(input.files[0].lastModified / 1000),
-                timemodified: Math.round(input.files[0].lastModified / 1000),
-                contenthash: null,
-                filesize: input.files[0].size,
-                mimetype: input.files[0].type,
-                blob: evt.target.result
-              };
-
+              updatedAttachments[id].source = window.prompt(
+                'Specify the source file name of the attachment:',
+                updatedAttachments[id]?.source || file.source
+              ) || file.source || updatedAttachments[id].source;
               source.innerText = updatedAttachments[id].source || id;
-              size.innerText = `Size: ${prettyBytes(Number(updatedAttachments[id].filesize))}`;
-              created.innerText = `Created: ${new Date(Number(updatedAttachments[id].timecreated) * 1000).toLocaleString()}`;
-              modified.innerText = `Modified: ${new Date(Number(updatedAttachments[id].timemodified) * 1000).toLocaleString()}`;
-            };
-            reader.readAsArrayBuffer(input?.files[0]);
-          }, false);
-          e.appendChild(input);
+            });
+            e.appendChild(source);
+            e.appendChild(sourceEdit);
+            e.appendChild(document.createElement('br'));
 
-          const updateBtn = document.createElement('button');
-          updateBtn.style.paddingInline = '1em';
-          updateBtn.style.paddingBlock = '.5em';
-          updateBtn.style.marginTop = '.75em';
-          updateBtn.innerText = '✏️️ update';
-          updateBtn.addEventListener('click', () => input.click());
-          e.appendChild(updateBtn);
+            const previewBtn = document.createElement('button');
+            previewBtn.style.paddingInline = '1em';
+            previewBtn.style.paddingBlock = '.5em';
+            previewBtn.style.marginTop = '.75em';
+            previewBtn.innerText = '👁️ preview';
+            previewBtn.addEventListener('click', async () => {
+              let blob;
 
-          const s = document.createElement('small');
-          s.insertAdjacentText('afterbegin', '(');
-          s.appendChild(author);
-          s.appendChild(authorEdit);
-          s.insertAdjacentText('beforeend', ', ');
-          s.appendChild(size);
-          s.insertAdjacentText('beforeend', ', ');
-          s.appendChild(created);
-          s.insertAdjacentText('beforeend', ', ');
-          s.appendChild(modified);
-          s.insertAdjacentText('beforeend', ')');
+              if (updatedAttachments[id]?.blob) {
+                blob = new Blob([updatedAttachments[id].blob], { type: updatedAttachments[id].mimetype });
+              } else {
+                blob = await extractAttachment(result, file.contenthash, file.mimetype);
+              }
 
-          e.appendChild(document.createElement('br'));
-          e.appendChild(s);
+              const fileURL = URL.createObjectURL(blob);
+              window.open(fileURL, '_blank');
+              URL.revokeObjectURL(fileURL);
+            });
+            e.appendChild(previewBtn);
 
-          list.appendChild(e);
+            const author = document.createElement('span');
+            author.innerText = `Author: ${updatedAttachments[id]?.author || file.author}`;
+
+            const size = document.createElement('span');
+            size.innerText = `Size: ${prettyBytes(Number(updatedAttachments[id]?.filesize || file.filesize))}`;
+
+            const created = document.createElement('span');
+            created.innerText = `Created: ${new Date(Number(updatedAttachments[id]?.timecreated || file.timecreated) * 1000).toLocaleString()}`;
+
+            const modified = document.createElement('span');
+            modified.innerText = `Modified: ${new Date(Number(updatedAttachments[id]?.timemodified || file.timemodified) * 1000).toLocaleString()}`;
+
+            const authorEdit = document.createElement('a');
+            authorEdit.href = '#';
+            authorEdit.innerText = '✏️';
+            authorEdit.style.marginLeft = '4px';
+            authorEdit.addEventListener('click', (e) => {
+              e.stopPropagation();
+              e.preventDefault();
+
+              if (!updatedAttachments[id]) {
+                updatedAttachments[id] = {
+                  author: file.author,
+                  source: file.source,
+                  timecreated: file.timecreated,
+                  timemodified: file.timemodified,
+                  contenthash: file.contenthash,
+                  filesize: file.filesize,
+                  filepath: file.filepath,
+                  mimetype: file.mimetype,
+                  blob: null
+                };
+              }
+
+              updatedAttachments[id].author = window.prompt(
+                'Specify the name of the author:',
+                updatedAttachments[id]?.author || file.author
+              ) || file.author || updatedAttachments[id].author;
+              author.innerText = `Author: ${updatedAttachments[id].author}`;
+            });
+
+            const input = document.createElement('input');
+            input.style.display = 'none';
+            input.accept = file.mimetype;
+            input.type = 'file';
+            input.addEventListener('change', () => {
+              const reader = new FileReader();
+              reader.onload = (evt) => {
+                updatedAttachments[id] = {
+                  author: file.author,
+                  source: input?.files[0].name,
+                  timecreated: Math.round(input.files[0].lastModified / 1000),
+                  timemodified: Math.round(input.files[0].lastModified / 1000),
+                  contenthash: null,
+                  filesize: input.files[0].size,
+                  filepath: null,
+                  mimetype: input.files[0].type,
+                  blob: evt.target.result
+                };
+
+                source.innerText = updatedAttachments[id].source || id;
+                size.innerText = `Size: ${prettyBytes(Number(updatedAttachments[id].filesize))}`;
+                created.innerText = `Created: ${new Date(Number(updatedAttachments[id].timecreated) * 1000).toLocaleString()}`;
+                modified.innerText = `Modified: ${new Date(Number(updatedAttachments[id].timemodified) * 1000).toLocaleString()}`;
+              };
+              reader.readAsArrayBuffer(input?.files[0]);
+            }, false);
+            e.appendChild(input);
+
+            const updateBtn = document.createElement('button');
+            updateBtn.style.paddingInline = '1em';
+            updateBtn.style.paddingBlock = '.5em';
+            updateBtn.style.marginTop = '.75em';
+            updateBtn.innerText = '✏️️ update';
+            updateBtn.addEventListener('click', () => input.click());
+            e.appendChild(updateBtn);
+
+            const s = document.createElement('small');
+            s.insertAdjacentText('afterbegin', '(');
+            s.appendChild(author);
+            s.appendChild(authorEdit);
+            s.insertAdjacentText('beforeend', ', ');
+            s.appendChild(size);
+            s.insertAdjacentText('beforeend', ', ');
+            s.appendChild(created);
+            s.insertAdjacentText('beforeend', ', ');
+            s.appendChild(modified);
+            s.insertAdjacentText('beforeend', ')');
+
+            e.appendChild(document.createElement('br'));
+            e.appendChild(s);
+
+            dir.appendChild(e);
+          }
         }
+
         element.appendChild(list);
       }
     }
